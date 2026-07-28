@@ -9,6 +9,28 @@
 5. Sincronização, apuração e ranking são idempotentes.
 6. Participantes e rankings não atravessam bolões.
 7. O baseline da Copa continua migrável e reversível.
+8. O Mega Bolão 360 é um plugin esportivo independente do plugin editorial
+   M360 Core, sem dependência de runtime em qualquer direção.
+
+## Limite entre plugins
+
+```text
+WordPress
+├── M360 Core
+│   └── domínio editorial
+└── Mega Bolão 360
+    └── domínio esportivo + integração de leitura com DW/ETL
+```
+
+O código do Mega Bolão 360 permanece exclusivamente no repositório
+`ppiressolucoes/m360-bolao`, com bootstrap, namespace/prefixos, migrations,
+assets, administração, releases e pacote ZIP próprios. Nenhum arquivo do Bolão
+será incorporado ao repositório ou ao pacote do M360 Core.
+
+Da mesma forma, o Mega Bolão 360 não inclui nem inicializa arquivos internos do
+M360 Core. A coexistência no portal não constitui dependência. Uma integração
+futura, se necessária, deverá usar contrato público, opcional e versionado,
+com funcionamento degradável quando o outro plugin estiver ausente.
 
 ## Fronteiras de dados
 

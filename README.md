@@ -2,6 +2,21 @@
 
 Plugin WordPress do Mega Bolão 360.
 
+## Identidade e independência
+
+O **Mega Bolão 360** é um plugin esportivo independente, responsável pelo
+domínio de competições, bolões, participantes, palpites, apuração e ranking.
+Ele não é módulo, componente ou extensão do **M360 Core**.
+
+O **M360 Core** permanece como plugin editorial independente. Os dois plugins:
+
+- possuem repositórios, versionamento, pacotes ZIP e ciclos de publicação próprios;
+- podem coexistir na mesma instalação WordPress sem dependência de runtime;
+- não carregam arquivos, classes, migrations ou assets um do outro;
+- mantêm painéis administrativos e responsabilidades separados;
+- só podem interoperar futuramente por contratos públicos, opcionais e
+  versionados, nunca por incorporação de código.
+
 Status atual: baseline de produção recuperado; evolução multi-competição em
 discovery técnico.
 
@@ -72,4 +87,3 @@ mengao360-bolao/
 
 Arquivos de discovery, dumps, credenciais e dados de produção nunca entram no
 pacote WordPress.
-

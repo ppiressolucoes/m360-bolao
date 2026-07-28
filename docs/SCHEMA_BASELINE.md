@@ -102,9 +102,24 @@ As tabelas `bolao_*` usam vários identificadores `INT`, enquanto as dimensões
 e fatos esportivos usam `BIGINT UNSIGNED`. A migração deve alinhar os tipos
 antes de criar FKs adicionais.
 
-### Resultados manuais
+### Resultados manuais e delay da API
 
 `bolao_resultados_partidas.fonte_resultado` ainda aceita `ADMIN_MANUAL`.
-Valores legados devem ser preservados para auditoria, mas novas gravações
-manuais não serão permitidas pela aplicação.
+O painel utiliza esse caminho quando um resultado oficial ainda não foi
+entregue pela API em tempo para publicação.
 
+Valores legados devem ser preservados para auditoria. A evolução continuará
+aceitando intervenção manual controlada, porém sem promover a entrada do
+WordPress diretamente a fato definitivo em `fato_jogos`.
+
+O schema alvo deve possuir uma camada de override temporário com:
+
+- jogo e bolão/competição;
+- placar provisório de publicação;
+- fonte oficial consultada;
+- justificativa e evidência;
+- operador WordPress;
+- data de criação e expiração;
+- status `ATIVO`, `CONCILIADO`, `REVOGADO` ou `EXPIRADO`;
+- hash do estado observado no DW;
+- data e resultado da reconciliação.

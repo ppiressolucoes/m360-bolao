@@ -50,7 +50,7 @@ O baseline não declara:
 As versões mínimas de WordPress, PHP e MariaDB precisam ser definidas durante
 a homologação, não inferidas silenciosamente.
 
-## Não conformidade conhecida
+## Operação manual legada
 
 O painel administrativo atual permite salvar resultado manual e, quando o
 status aceita apuração, executa:
@@ -63,13 +63,18 @@ SET status_jogo = 'FINISHED',
 WHERE id = ?;
 ```
 
-Esse caminho viola a nova fronteira arquitetural. Ele deve ser removido da
-evolução multi-competição, preservando apenas leitura de `fato_jogos` e
-apuração derivada nas tabelas `bolao_*`.
+Essa operação atende uma necessidade real: refletir temporariamente no portal
+um resultado oficial quando a API está atrasada.
+
+A evolução multi-competição deve preservar a capacidade operacional, mas
+substituir o `UPDATE fato_jogos` direto por um override temporário, com origem,
+evidência, operador, motivo, expiração e reconciliação automática.
+
+O fato oficial continua pertencendo ao ETL. Quando a API entregar o resultado,
+o override é conciliado, encerrado e mantido apenas como auditoria.
 
 ## Limitações de validação local
 
 O runtime PHP não estava disponível no workspace durante a recuperação.
 Consequentemente, o baseline ainda precisa de lint e testes em uma matriz
 homologada de PHP/WordPress.
-

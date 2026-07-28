@@ -26,6 +26,7 @@ Domínio do Bolão — leitura e escrita controlada
 ├── bolao_usuarios
 ├── bolao_palpites
 ├── bolao_resultados_partidas
+├── bolao_resultados_overrides
 ├── bolao_pontuacao
 ├── bolao_ranking
 ├── bolao_ligas
@@ -36,6 +37,47 @@ Domínio do Bolão — leitura e escrita controlada
 
 O nome físico legado `bolao_competicoes` será preservado na primeira migração
 para reduzir risco. No domínio PHP, cada linha será tratada como um `Bolao`.
+
+## Intervenção manual por atraso da API
+
+O painel operacional é necessário quando o resultado já é oficial, mas a API
+ainda não atualizou `fato_jogos`. A evolução preservará essa capacidade como
+override de publicação:
+
+```text
+Resultado oficial confirmado
+            ↓
+Operador registra override temporário
+            ↓
+bolao_resultados_overrides + auditoria
+            ↓
+view/publicador de resultado efetivo
+            ↓
+portal + apuração assistida
+            ↓
+ETL recebe o resultado oficial
+            ↓
+conciliação automática encerra o override
+```
+
+Regras:
+
+- o operador não edita times, calendário ou status estrutural do jogo;
+- o override exige `manage_options`, nonce, justificativa e referência da
+  fonte oficial;
+- o estado anterior do DW é armazenado por hash;
+- o override possui expiração e não pode permanecer indefinidamente ativo;
+- divergência entre override e API gera alerta crítico e bloqueia a
+  finalização automática;
+- coincidência com a API encerra o override como `CONCILIADO`;
+- revogação nunca apaga a auditoria;
+- `fato_jogos` não é atualizado diretamente pelo WordPress;
+- uma eventual promoção ao DW é responsabilidade de workflow ETL autorizado,
+  transacional e auditado.
+
+Para compatibilidade operacional, a primeira homologação deve comparar o
+resultado efetivo exibido pelo portal com o painel legado antes de desligar o
+write path direto.
 
 ## Registro de competições elegíveis
 
@@ -86,7 +128,8 @@ O sincronizador:
 1. recebe ou gera uma chave idempotente;
 2. adquire lock por bolão;
 3. lê os jogos elegíveis no DW;
-4. deriva resultados do Bolão sem escrever em `fato_jogos`;
+4. deriva resultados do Bolão e aplica override temporário válido, sem
+   escrever em `fato_jogos`;
 5. apura apenas resultados novos ou alterados;
 6. recalcula os rankings afetados;
 7. registra contagens, hashes e erros;
@@ -134,7 +177,6 @@ usuário de banco.
 4. backfill de participantes a partir de palpites, ligas e rankings;
 5. remoção da unicidade competição/temporada;
 6. introdução dos novos repositórios PHP;
-7. desativação do resultado manual;
+7. migração do resultado manual para override temporário e conciliável;
 8. homologação em bolão não destacado;
 9. rollback testado antes da publicação.
-

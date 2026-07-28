@@ -1,0 +1,1250 @@
+/* =========================================================
+   Mengão 360 - Bolão
+   Arquivo CSS principal do plugin.
+
+   Sprint 2.5 UX:
+   - Navegação de datas estabilizada para desktop/mobile;
+   - Ranking geral em tabela responsiva;
+   - Correções de contraste para modo escuro do tema.
+   ========================================================= */
+
+/* =========================================================
+   Estrutura geral
+   ========================================================= */
+.m360-bolao {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    font-family: inherit;
+    color-scheme: light;
+}
+
+.m360-bolao,
+.m360-bolao * {
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   Hero
+   ========================================================= */
+.m360-bolao-hero {
+    background: linear-gradient(135deg, #111827, #7f1d1d);
+    color: #fff;
+    border-radius: 18px;
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+.m360-bolao-tag {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.m360-bolao-hero h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+    line-height: 1.15;
+    color: #fff;
+}
+
+.m360-bolao-hero p {
+    max-width: 720px;
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.92;
+    color: #fff;
+}
+
+/* =========================================================
+   Cards e botões
+   ========================================================= */
+.m360-bolao-card {
+    background: #fff;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.m360-bolao-card h2,
+.m360-bolao-card h3 {
+    margin-top: 0;
+    color: #374151 !important;
+}
+
+.m360-bolao-card h2 {
+    font-size: 22px;
+}
+
+.m360-bolao-btn,
+.m360-bolao-btn-secundario {
+    display: inline-block;
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 16px;
+    background: #b91c1c;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.m360-bolao-btn:hover,
+.m360-bolao-btn-secundario:hover {
+    background: #991b1b;
+    color: #fff !important;
+}
+
+/* =========================================================
+   Painel do usuário
+   ========================================================= */
+.m360-bolao-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.m360-bolao-stat {
+    background: #f9fafb;
+    color: #1f2937;
+    border-radius: 14px;
+    padding: 18px;
+    text-align: center;
+}
+
+.m360-bolao-stat strong {
+    display: block;
+    font-size: 28px;
+    color: #991b1b !important;
+}
+
+.m360-bolao-stat span {
+    color: #4b5563 !important;
+    font-size: 14px;
+}
+
+/* =========================================================
+   Navegação entre datas
+   ========================================================= */
+.m360-bolao-navegacao {
+    display: grid;
+    grid-template-columns: minmax(74px, 1fr) auto minmax(74px, 1fr);
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 8px 0 28px;
+    padding: 14px 16px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+}
+
+.m360-bolao-nav-lado {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #374151 !important;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.m360-bolao-nav-esquerda {
+    justify-content: flex-start;
+}
+
+.m360-bolao-nav-direita {
+    justify-content: flex-end;
+}
+
+.m360-bolao-nav-centro {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    text-align: center;
+    color: #374151 !important;
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.m360-bolao-nav-centro strong {
+    color: #991b1b !important;
+    font-size: 18px;
+}
+
+.m360-bolao-nav-label {
+    color: #4b5563 !important;
+    font-weight: 600;
+}
+
+.m360-bolao-nav-data-apoio {
+    color: #4b5563 !important;
+    font-size: 14px;
+}
+
+.m360-bolao-nav-icone {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid #991b1b;
+    background: #b91c1c;
+    color: #fff !important;
+    text-decoration: none;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 38px;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 6px 14px rgba(185, 28, 28, 0.18);
+}
+
+.m360-bolao-nav-icone:hover {
+    background: #991b1b;
+    color: #fff !important;
+}
+
+.m360-bolao-nav-disabled {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+    color: #9ca3af !important;
+    box-shadow: none;
+    pointer-events: none;
+}
+
+/* =========================================================
+   Jogos e formulário de palpites
+   ========================================================= */
+.m360-bolao-jogo {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f9fafb;
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.m360-bolao-jogo-info strong,
+.m360-bolao-jogo strong {
+    color: #374151 !important;
+}
+
+.m360-bolao-jogo span {
+    display: block;
+    color: #6b7280 !important;
+    margin-top: 4px;
+    font-size: 14px;
+}
+
+.m360-bolao-palpite-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.m360-bolao-palpite-demo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.m360-bolao-palpite-demo input,
+.m360-bolao input {
+    width: 58px;
+    padding: 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+    text-align: center;
+    background-color: #ffffff;
+    color: #111827;
+}
+
+.m360-bolao-feedback {
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.m360-bolao-feedback.sucesso {
+    color: #15803d !important;
+}
+
+.m360-bolao-feedback.erro {
+    color: #b91c1c !important;
+}
+
+.m360-bolao-aviso {
+    margin-bottom: 0;
+    color: #6b7280 !important;
+    font-size: 14px;
+}
+
+/* =========================================================
+   Bloqueio de palpites
+   ========================================================= */
+.m360-bolao-bloqueado {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.m360-bolao-cadeado {
+    font-size: 24px;
+}
+
+.m360-bolao-bloqueado strong {
+    display: block;
+    color: #991b1b !important;
+}
+
+.m360-bolao-bloqueado small {
+    display: block;
+    color: #7f1d1d !important;
+}
+
+/* =========================================================
+   Ranking Geral - tabela responsiva
+   ========================================================= */
+.m360-bolao-ranking-card {
+    overflow: hidden;
+}
+
+.m360-bolao-ranking-tabela {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.m360-bolao-ranking-cabecalho,
+.m360-bolao-ranking-linha {
+    display: grid;
+    grid-template-columns: 76px 1fr 90px 90px;
+    align-items: center;
+    gap: 12px;
+}
+
+.m360-bolao-ranking-cabecalho {
+    background: #f3f4f6;
+    color: #6b7280 !important;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 12px 16px;
+}
+
+.m360-bolao-ranking-linha {
+    padding: 14px 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+.m360-bolao-ranking-posicao {
+    font-size: 18px;
+    font-weight: 800;
+    color: #991b1b !important;
+    white-space: nowrap;
+}
+
+.m360-bolao-ranking-usuario strong {
+    display: block;
+    color: #374151 !important;
+    font-size: 15px;
+}
+
+.m360-bolao-ranking-usuario span {
+    display: block;
+    margin-top: 3px;
+    color: #6b7280 !important;
+    font-size: 13px;
+}
+
+.m360-bolao-ranking-pontos {
+    text-align: right;
+}
+
+.m360-bolao-ranking-pontos strong {
+    color: #991b1b !important;
+    font-size: 20px;
+}
+
+.m360-bolao-ranking-pontos span {
+    color: #6b7280 !important;
+    font-size: 12px;
+    margin-left: 2px;
+}
+
+.m360-bolao-ranking-exatos {
+    color: #374151 !important;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* =========================================================
+   Responsivo
+   ========================================================= */
+@media (max-width: 768px) {
+    .m360-bolao {
+        padding: 20px 12px;
+    }
+
+    .m360-bolao-hero {
+        padding: 24px;
+    }
+
+    .m360-bolao-hero h1 {
+        font-size: 26px;
+    }
+
+    .m360-bolao-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .m360-bolao-jogo {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .m360-bolao-palpite-area {
+        align-items: stretch;
+    }
+
+    .m360-bolao-palpite-demo {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .m360-bolao-btn-secundario {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-navegacao {
+        grid-template-columns: 44px 1fr 44px;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .m360-bolao-nav-data-apoio,
+    .m360-bolao-nav-label {
+        display: none;
+    }
+
+    .m360-bolao-nav-centro strong {
+        font-size: 16px;
+    }
+
+    .m360-bolao-nav-icone {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+        font-size: 28px;
+    }
+
+    .m360-bolao-ranking-cabecalho {
+        display: none;
+    }
+
+    .m360-bolao-ranking-tabela {
+        border: 0;
+        background: transparent;
+        overflow: visible;
+    }
+
+    .m360-bolao-ranking-linha {
+        grid-template-columns: 44px 1fr auto;
+        grid-template-areas:
+            "pos usuario pontos"
+            "pos usuario exatos";
+        gap: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        background: #ffffff;
+    }
+
+    .m360-bolao-ranking-posicao {
+        grid-area: pos;
+        font-size: 22px;
+    }
+
+    .m360-bolao-ranking-usuario {
+        grid-area: usuario;
+    }
+
+    .m360-bolao-ranking-pontos {
+        grid-area: pontos;
+        text-align: right;
+    }
+
+    .m360-bolao-ranking-exatos {
+        grid-area: exatos;
+        text-align: right;
+        font-size: 12px;
+        color: #6b7280 !important;
+    }
+
+    .m360-bolao-ranking-exatos::after {
+        content: " exatos";
+    }
+}
+
+
+/* =========================================================
+   Sprint 3 UX - Minhas Ligas
+   Ajusta formulário, botões e lista de ligas para desktop/mobile.
+   ========================================================= */
+
+.m360-bolao-ligas-card {
+    overflow: hidden;
+}
+
+.m360-bolao-ligas-acoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 14px;
+}
+
+.m360-bolao-liga-box {
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f9fafb;
+}
+
+.m360-bolao-liga-box h3 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    color: #374151 !important;
+}
+
+.m360-bolao-liga-box p {
+    margin: 0 0 14px;
+    color: #6b7280 !important;
+    font-size: 14px;
+}
+
+.m360-bolao-liga-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.m360-bolao-liga-form input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+    color: #111827;
+    text-align: left;
+}
+
+.m360-bolao-liga-form .m360-bolao-btn-secundario {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 104px;
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
+    line-height: 42px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.m360-bolao-liga-feedback {
+    min-height: 20px;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.m360-bolao-liga-feedback.sucesso {
+    color: #15803d !important;
+}
+
+.m360-bolao-liga-feedback.erro {
+    color: #b91c1c !important;
+}
+
+.m360-bolao-minhas-ligas {
+    margin-top: 18px;
+}
+
+.m360-bolao-minhas-ligas::before {
+    content: "Suas ligas";
+    display: block;
+    margin: 0 0 10px;
+    color: #374151;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.m360-bolao-liga-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #ffffff;
+    margin-bottom: 10px;
+}
+
+.m360-bolao-liga-info strong {
+    display: block;
+    color: #374151 !important;
+    font-size: 15px;
+}
+
+.m360-bolao-liga-info span {
+    display: block;
+    margin-top: 3px;
+    color: #6b7280 !important;
+    font-size: 13px;
+}
+
+.m360-bolao-liga-convite {
+    min-width: 112px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    text-align: center;
+}
+
+.m360-bolao-liga-convite span {
+    display: block;
+    color: #6b7280 !important;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.m360-bolao-liga-convite strong {
+    display: block;
+    margin-top: 2px;
+    color: #991b1b !important;
+    font-size: 14px;
+}
+
+.m360-bolao-liga-acoes .m360-bolao-btn-secundario {
+    width: auto;
+    min-width: 116px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   Sprint 3 UX - Ajustes mobile do card Minhas Ligas
+   ========================================================= */
+@media (max-width: 768px) {
+    .m360-bolao-ligas-acoes {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .m360-bolao-liga-box {
+        padding: 16px;
+    }
+
+    .m360-bolao-liga-form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
+    .m360-bolao-liga-form input {
+        width: 100%;
+        height: 40px;
+        font-size: 14px;
+    }
+
+    .m360-bolao-liga-form .m360-bolao-btn-secundario {
+        min-width: 86px;
+        height: 40px;
+        padding: 0 12px;
+        font-size: 14px;
+        line-height: 40px;
+    }
+
+    .m360-bolao-liga-item {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .m360-bolao-liga-convite {
+        width: 100%;
+        text-align: left;
+    }
+
+    .m360-bolao-liga-acoes {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .m360-bolao-liga-acoes .m360-bolao-btn-secundario {
+        width: auto;
+        min-width: 132px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 420px) {
+    .m360-bolao-liga-form {
+        grid-template-columns: 1fr;
+    }
+
+    .m360-bolao-liga-form .m360-bolao-btn-secundario {
+        width: 100%;
+    }
+}
+
+
+/* =========================================================
+   Sprint 4.1 - Correções finais de login, ligas e ranking público
+   ========================================================= */
+
+/* Oculta elementos auxiliares usados pelo JS até haver retorno da ação. */
+.m360-oculto {
+    display: none !important;
+}
+
+.m360-bolao-login-social {
+    margin-top: 16px;
+}
+
+.m360-bolao-painel-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.m360-bolao-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #991b1b !important;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.m360-bolao-logout:hover {
+    background: #fee2e2;
+    color: #7f1d1d !important;
+}
+
+.m360-bolao-codigo-gerado {
+    margin-top: 10px;
+    color: #15803d !important;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.m360-bolao-codigo-gerado strong {
+    color: #991b1b !important;
+}
+
+/* Garante que input + botão de ligas permaneçam na mesma linha também no mobile. */
+@media (max-width: 420px) {
+    .m360-bolao-liga-form {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        gap: 8px;
+    }
+
+    .m360-bolao-liga-form input {
+        min-width: 0;
+        font-size: 13px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .m360-bolao-liga-form .m360-bolao-btn-secundario {
+        width: auto !important;
+        min-width: 72px;
+        padding-left: 10px;
+        padding-right: 10px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-painel-topo {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* =========================================================
+   Sprint 4 - Ajustes WhatsApp e mobile das ligas
+   ========================================================= */
+
+.m360-bolao-btn-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-width: 128px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #25D366;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.m360-bolao-btn-whatsapp::before {
+    content: "☘";
+    font-size: 16px;
+}
+
+.m360-bolao-btn-whatsapp:hover {
+    background: #1ebe5d;
+    color: #fff !important;
+}
+
+@media (max-width: 420px) {
+    .m360-bolao-liga-form {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+
+    .m360-bolao-liga-form .m360-bolao-btn-secundario {
+        width: auto;
+        min-width: 78px;
+        padding: 0 10px;
+        font-size: 13px;
+    }
+
+    .m360-bolao-liga-form input {
+        min-width: 0;
+        font-size: 13px;
+    }
+}
+
+/* =========================================================
+   Sprint 5.5 - Ajuste pontual do painel dashboard
+   Mantém o layout em cards e posiciona o botão Sair no topo direito.
+   ========================================================= */
+.m360-bolao-painel-topo h2 {
+    margin-bottom: 10px;
+}
+
+.m360-bolao-painel-topo p {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-logout {
+        align-self: flex-end;
+    }
+}
+
+/* =========================================================
+   Sprint 5.5 - Dashboard informativo
+   Mantém o padrão visual do painel superior e permite 6 cards.
+   ========================================================= */
+.m360-bolao-grid-dashboard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+    .m360-bolao-grid-dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   Sprint 5.6 - Agenda de Palpites com bandeiras e fechamento
+   Ajuste visual pontual preservando o layout base dos cards.
+   ========================================================= */
+
+.m360-bolao-confronto {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-bottom: 4px;
+}
+
+.m360-bolao-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #374151 !important;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.m360-bolao-time span {
+    display: inline !important;
+    margin-top: 0 !important;
+    color: #374151 !important;
+    font-size: inherit !important;
+    font-weight: inherit;
+}
+
+.m360-bolao-bandeira {
+    width: 26px;
+    height: 18px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    flex: 0 0 auto;
+}
+
+.m360-bolao-versus {
+    display: inline-flex !important;
+    align-items: center;
+    margin: 0 2px !important;
+    color: #991b1b !important;
+    font-size: 18px !important;
+    font-weight: 900;
+}
+
+.m360-bolao-jogo-meta {
+    display: block;
+    color: #6b7280 !important;
+    margin-top: 4px;
+    font-size: 14px;
+}
+
+.m360-bolao-fechamento-palpite {
+    display: block;
+    margin-top: 5px !important;
+    color: #991b1b !important;
+    font-size: 13px !important;
+    font-weight: 800;
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-confronto {
+        gap: 6px 8px;
+    }
+
+    .m360-bolao-time {
+        font-size: 17px;
+    }
+
+    .m360-bolao-bandeira {
+        width: 24px;
+        height: 17px;
+    }
+
+    .m360-bolao-versus {
+        font-size: 17px !important;
+    }
+}
+
+/* =========================================================
+   Sprint 6 - Resultado final no card da Agenda de Palpites
+   Exibe resultado oficial, palpite do usuário e pontuação após apuração.
+   ========================================================= */
+
+.m360-bolao-resultado-final {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #166534 !important;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.m360-bolao-resultado-final span {
+    display: inline !important;
+    margin-top: 0 !important;
+    color: #166534 !important;
+    font-size: 12px !important;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.m360-bolao-resultado-final strong {
+    color: #166534 !important;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.m360-bolao-bloqueado-apurado {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.m360-bolao-bloqueado-apurado strong {
+    color: #166534 !important;
+}
+
+.m360-bolao-bloqueado-apurado small {
+    color: #14532d !important;
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-resultado-final {
+        width: 100%;
+        justify-content: space-between;
+        border-radius: 12px;
+    }
+}
+
+
+/* =========================================================
+   Sprint 6.0.1 - Resultado final clean na Agenda
+   Move o placar final para a linha do confronto e evita
+   duplicidade visual no card de jogo finalizado.
+   ========================================================= */
+
+.m360-bolao-placar-confronto {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 2px !important;
+    color: #15803d !important;
+    font-size: 18px !important;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.m360-bolao-fechamento-resultado {
+    color: #15803d !important;
+}
+
+/* O badge antigo de resultado final fica desativado neste layout clean. */
+.m360-bolao-resultado-final {
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    .m360-bolao-placar-confronto {
+        font-size: 17px !important;
+    }
+}
+
+/* =========================================================
+   Mega Bolão 360 — Correção de bandeiras na Agenda
+   Usuário logado / mobile / desktop
+   ========================================================= */
+
+/* Garante que qualquer imagem de bandeira dentro da agenda não estoure */
+.bolao-agenda img,
+.m360-agenda img,
+.bolao-agenda-jogo img,
+.m360-agenda-jogo img {
+    max-width: 28px !important;
+    width: 28px !important;
+    height: 20px !important;
+    max-height: 20px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    flex: 0 0 28px !important;
+    border-radius: 2px;
+}
+
+/* Protege especificamente as bandeiras caso exista classe própria */
+.bolao-flag,
+.bolao-bandeira,
+.m360-flag,
+.m360-bandeira,
+.agenda-flag,
+.agenda-bandeira {
+    max-width: 28px !important;
+    width: 28px !important;
+    height: 20px !important;
+    max-height: 20px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    flex: 0 0 28px !important;
+    border-radius: 2px;
+}
+
+/* Evita que o bloco do palpite do usuário comprima ou empurre o lado esquerdo */
+.bolao-agenda-jogo,
+.m360-agenda-jogo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.bolao-agenda-jogo-info,
+.m360-agenda-jogo-info,
+.bolao-agenda-jogo-main,
+.m360-agenda-jogo-main {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.bolao-agenda-palpite,
+.m360-agenda-palpite,
+.bolao-palpite-status,
+.m360-palpite-status {
+    flex: 0 0 auto;
+}
+
+/* Mobile: mantém bandeira pequena e card organizado */
+@media (max-width: 768px) {
+    .bolao-agenda img,
+    .m360-agenda img,
+    .bolao-agenda-jogo img,
+    .m360-agenda-jogo img,
+    .bolao-flag,
+    .bolao-bandeira,
+    .m360-flag,
+    .m360-bandeira,
+    .agenda-flag,
+    .agenda-bandeira {
+        max-width: 24px !important;
+        width: 24px !important;
+        height: 17px !important;
+        max-height: 17px !important;
+        flex: 0 0 24px !important;
+    }
+
+    .bolao-agenda-jogo,
+    .m360-agenda-jogo {
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .bolao-agenda-palpite,
+    .m360-agenda-palpite,
+    .bolao-palpite-status,
+    .m360-palpite-status {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+
+/* =========================================================
+   Mega Bolão 360 — Ajuste cirúrgico 14/06/2026
+   Bandeiras da Agenda + destaque da data selecionada
+   ========================================================= */
+
+/* Força tamanho real das bandeiras na Agenda, inclusive com usuário logado. */
+.m360-bolao .m360-bolao-confronto .m360-bolao-time img.m360-bolao-bandeira,
+.m360-bolao .m360-bolao-confronto .m360-bolao-time img.m360-bandeira {
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    aspect-ratio: 26 / 18 !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: inline-block !important;
+    flex: 0 0 26px !important;
+    border-radius: 3px !important;
+    vertical-align: middle !important;
+}
+
+/* Evita que regras globais de img do tema/WordPress transformem bandeiras em imagem responsiva grande. */
+.m360-bolao .m360-bolao-confronto img.m360-bandeira {
+    position: static !important;
+    transform: none !important;
+}
+
+/* Mantém o confronto compacto mesmo quando o badge de palpite/pontuação aparece no usuário logado. */
+.m360-bolao .m360-bolao-jogo-info {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.m360-bolao .m360-bolao-palpite-area,
+.m360-bolao .m360-bolao-bloqueado {
+    flex: 0 0 auto;
+}
+
+/* Destaque do título central da navegação: Jogos de dd/mm/aaaa. */
+.m360-bolao .m360-bolao-nav-centro {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #fee2e2;
+    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.06);
+}
+
+.m360-bolao .m360-bolao-nav-centro strong {
+    color: #991b1b !important;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+@media (max-width: 640px) {
+    .m360-bolao .m360-bolao-confronto .m360-bolao-time img.m360-bolao-bandeira,
+    .m360-bolao .m360-bolao-confronto .m360-bolao-time img.m360-bandeira {
+        width: 24px !important;
+        min-width: 24px !important;
+        max-width: 24px !important;
+        height: 17px !important;
+        min-height: 17px !important;
+        max-height: 17px !important;
+        aspect-ratio: 24 / 17 !important;
+        flex-basis: 24px !important;
+    }
+
+    .m360-bolao .m360-bolao-nav-centro {
+        padding: 6px 8px;
+        border-radius: 12px;
+    }
+
+    .m360-bolao .m360-bolao-nav-centro strong {
+        font-size: 18px;
+    }
+}

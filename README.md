@@ -53,6 +53,10 @@ O plugin não migra o schema durante a ativação. A migração C.1 é idempoten
 bloqueada por padrão e só pode ser iniciada por administrador durante uma
 janela controlada.
 
+Na ausência de staging, o menu **Mega Bolão 360 → Pré-homologação** permite
+instalar o candidato em produção com a migração bloqueada e executar um
+diagnóstico somente leitura antes do backup e da janela de mudança.
+
 ## Contratos públicos atuais
 
 - shortcode legado: `[bolao_mengao competicao="fifa-world-cup"]`;

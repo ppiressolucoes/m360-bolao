@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
 class Mengao360_Bolao_Schema {
 
     const TARGET_VERSION = 'c1-foundation-1';
+    const MIGRATION_LOCK = 'm360_bolao_schema_c1_foundation';
 
     public static function migrations_allowed() {
         return defined('MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS')
@@ -63,6 +64,10 @@ class Mengao360_Bolao_Schema {
             'bolao_competicoes',
             'bolao_usuarios',
             'bolao_palpites',
+            'bolao_ligas',
+            'bolao_liga_participantes',
+            'bolao_ranking',
+            'bolao_status_competicao',
             'dim_competicoes',
             'fato_jogos',
         ];
@@ -95,15 +100,78 @@ class Mengao360_Bolao_Schema {
         $state_column_exists = self::table_exists($pdo, 'bolao_competicoes')
             && self::column_exists($pdo, 'bolao_competicoes', 'estado_operacional');
 
+        $expected_columns = [
+            'bolao_competicoes' => [
+                'estado_operacional',
+                'visibilidade',
+                'janela_fechamento_minutos',
+                'criado_por_wp_user_id',
+                'atualizado_por_wp_user_id',
+                'dth_publicacao',
+                'dth_arquivamento',
+            ],
+            'bolao_participantes' => ['participante_id', 'bolao_competicao_id', 'usuario_bolao_id', 'status'],
+            'bolao_resultados_overrides' => ['override_id', 'bolao_competicao_id', 'jogo_id', 'status', 'dth_expiracao'],
+            'bolao_auditoria' => ['auditoria_id', 'request_id', 'evento', 'dth_evento'],
+            'bolao_sincronizacoes' => ['sincronizacao_id', 'bolao_competicao_id', 'chave_idempotencia', 'status'],
+            'bolao_schema_migrations' => ['migration_id', 'versao', 'checksum', 'aplicado_em'],
+        ];
+        $missing_foundation_columns = [];
+        foreach ($expected_columns as $table => $columns) {
+            if (!self::table_exists($pdo, $table)) {
+                continue;
+            }
+            foreach ($columns as $column) {
+                if (!self::column_exists($pdo, $table, $column)) {
+                    $missing_foundation_columns[] = $table . '.' . $column;
+                }
+            }
+        }
+
+        $expected_indexes = [
+            'bolao_competicoes' => [
+                'idx_bolao_estado_operacional',
+                'idx_bolao_competicao_temporada',
+            ],
+            'bolao_participantes' => ['uk_bolao_participante'],
+            'bolao_sincronizacoes' => ['uk_bolao_sincronizacao_chave'],
+            'bolao_schema_migrations' => ['uk_bolao_schema_versao'],
+        ];
+        $missing_foundation_indexes = [];
+        foreach ($expected_indexes as $table => $indexes) {
+            if (!self::table_exists($pdo, $table)) {
+                continue;
+            }
+            foreach ($indexes as $index) {
+                if (!self::index_exists($pdo, $table, $index)) {
+                    $missing_foundation_indexes[] = $table . '.' . $index;
+                }
+            }
+        }
+
+        $migration_recorded = self::migration_recorded($pdo);
+        $compatibility_issues = empty($missing)
+            ? self::get_compatibility_issues($pdo)
+            : ['Baseline obrigatório incompleto.'];
+        $schema_ready = empty($missing)
+            && empty($foundation_missing)
+            && empty($missing_foundation_columns)
+            && empty($missing_foundation_indexes)
+            && empty($compatibility_issues)
+            && !$legacy_unique_exists
+            && $state_column_exists;
+
         return [
-            'ready' => empty($missing)
-                && empty($foundation_missing)
-                && !$legacy_unique_exists
-                && $state_column_exists,
+            'ready' => $schema_ready && $migration_recorded,
+            'schema_ready' => $schema_ready,
             'missing_legacy_tables' => $missing,
             'missing_foundation_tables' => $foundation_missing,
+            'missing_foundation_columns' => $missing_foundation_columns,
+            'missing_foundation_indexes' => $missing_foundation_indexes,
             'legacy_unique_exists' => $legacy_unique_exists,
             'state_column_exists' => $state_column_exists,
+            'migration_recorded' => $migration_recorded,
+            'compatibility_issues' => $compatibility_issues,
             'target_version' => self::TARGET_VERSION,
             'migrations_allowed' => self::migrations_allowed(),
         ];
@@ -116,35 +184,63 @@ class Mengao360_Bolao_Schema {
             );
         }
 
-        $preflight = self::preflight($pdo);
-        if (!empty($preflight['missing_legacy_tables'])) {
-            throw new RuntimeException(
-                'Baseline incompleto. Tabelas ausentes: ' . implode(', ', $preflight['missing_legacy_tables'])
-            );
+        $stmt_lock = $pdo->prepare('SELECT GET_LOCK(?, 0)');
+        $stmt_lock->execute([self::MIGRATION_LOCK]);
+        if ((int) $stmt_lock->fetchColumn() !== 1) {
+            throw new RuntimeException('Já existe uma migração do Mega Bolão 360 em andamento.');
         }
 
-        self::create_foundation_tables($pdo);
-        self::align_legacy_columns($pdo);
-        self::remove_single_pool_constraint($pdo);
-        self::backfill_participants($pdo);
+        try {
+            $preflight = self::preflight($pdo);
+            if (!empty($preflight['missing_legacy_tables'])) {
+                throw new RuntimeException(
+                    'Baseline incompleto. Tabelas ausentes: ' . implode(', ', $preflight['missing_legacy_tables'])
+                );
+            }
+            if (!empty($preflight['compatibility_issues'])) {
+                throw new RuntimeException(
+                    'Dados incompatíveis com a migração: ' . implode(' ', $preflight['compatibility_issues'])
+                );
+            }
 
-        $stmt = $pdo->prepare(
-            'INSERT INTO bolao_schema_migrations
-                (versao, aplicado_por_wp_user_id, checksum, observacao)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-                aplicado_por_wp_user_id = VALUES(aplicado_por_wp_user_id),
-                checksum = VALUES(checksum),
-                observacao = VALUES(observacao)'
-        );
-        $stmt->execute([
-            self::TARGET_VERSION,
-            (int) $wordpress_user_id,
-            hash('sha256', self::TARGET_VERSION),
-            'Sprint Comercial C.1 — Multi-Competition Foundation',
-        ]);
+            $migration_was_recorded = !empty($preflight['migration_recorded']);
 
-        return self::preflight($pdo);
+            self::create_foundation_tables($pdo);
+            self::align_legacy_columns($pdo);
+            if (!$migration_was_recorded) {
+                self::normalize_legacy_pool_states($pdo);
+            }
+            self::remove_single_pool_constraint($pdo);
+            self::backfill_participants($pdo);
+
+            $stmt = $pdo->prepare(
+                'INSERT INTO bolao_schema_migrations
+                    (versao, aplicado_por_wp_user_id, checksum, observacao)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                    aplicado_por_wp_user_id = VALUES(aplicado_por_wp_user_id),
+                    checksum = VALUES(checksum),
+                    observacao = VALUES(observacao)'
+            );
+            $stmt->execute([
+                self::TARGET_VERSION,
+                (int) $wordpress_user_id,
+                hash('sha256', self::TARGET_VERSION),
+                'Sprint Comercial C.1 — Multi-Competition Foundation',
+            ]);
+
+            $postflight = self::preflight($pdo);
+            if (!$postflight['ready']) {
+                throw new RuntimeException(
+                    'A migração terminou sem atingir o estado esperado. Não prossiga com a publicação.'
+                );
+            }
+
+            return $postflight;
+        } finally {
+            $stmt_release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $stmt_release->execute([self::MIGRATION_LOCK]);
+        }
     }
 
     private static function create_foundation_tables($pdo) {
@@ -242,7 +338,6 @@ class Mengao360_Bolao_Schema {
              MODIFY temporada VARCHAR(20) NOT NULL'
         );
 
-        $state_added = !self::column_exists($pdo, 'bolao_competicoes', 'estado_operacional');
         $columns = [
             'estado_operacional' => "VARCHAR(20) NOT NULL DEFAULT 'RASCUNHO' AFTER status_competicao_id",
             'visibilidade' => "VARCHAR(20) NOT NULL DEFAULT 'PUBLICO' AFTER estado_operacional",
@@ -259,30 +354,41 @@ class Mengao360_Bolao_Schema {
             }
         }
 
-        if ($state_added) {
-            $pdo->exec(
-                "UPDATE bolao_competicoes
-                 SET estado_operacional = CASE
-                        WHEN ind_ativo = 1 THEN 'ABERTO'
-                        ELSE 'ARQUIVADO'
-                     END,
-                     dth_publicacao = CASE
-                        WHEN ind_ativo = 1 THEN COALESCE(data_abertura, dth_criacao, NOW())
-                        ELSE NULL
-                     END,
-                     dth_arquivamento = CASE
-                        WHEN ind_ativo = 0 THEN NOW()
-                        ELSE NULL
-                     END"
-            );
-        }
-
         if (!self::index_exists($pdo, 'bolao_competicoes', 'idx_bolao_estado_operacional')) {
             $pdo->exec(
                 'ALTER TABLE bolao_competicoes
                  ADD KEY idx_bolao_estado_operacional (estado_operacional, ind_ativo)'
             );
         }
+    }
+
+    private static function normalize_legacy_pool_states($pdo) {
+        $pdo->exec(
+            "UPDATE bolao_competicoes
+             SET estado_operacional = CASE
+                    WHEN ind_ativo = 0 THEN 'ARQUIVADO'
+                    WHEN data_fechamento IS NOT NULL
+                     AND data_fechamento <= NOW() THEN 'ENCERRADO'
+                    WHEN data_abertura IS NULL
+                      OR data_abertura > NOW() THEN 'RASCUNHO'
+                    ELSE 'ABERTO'
+                 END,
+                 visibilidade = CASE
+                    WHEN ind_publico = 1 THEN 'PUBLICO'
+                    ELSE 'PRIVADO'
+                 END,
+                 dth_publicacao = CASE
+                    WHEN ind_ativo = 1
+                     AND data_abertura IS NOT NULL
+                     AND data_abertura <= NOW()
+                    THEN COALESCE(data_abertura, dth_criacao, NOW())
+                    ELSE NULL
+                 END,
+                 dth_arquivamento = CASE
+                    WHEN ind_ativo = 0 THEN NOW()
+                    ELSE NULL
+                 END"
+        );
     }
 
     private static function remove_single_pool_constraint($pdo) {
@@ -324,5 +430,62 @@ class Mengao360_Bolao_Schema {
              WHERE origem.bolao_competicao_id IS NOT NULL
                AND origem.usuario_bolao_id IS NOT NULL"
         );
+    }
+
+    private static function migration_recorded($pdo) {
+        if (!self::table_exists($pdo, 'bolao_schema_migrations')) {
+            return false;
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*)
+             FROM bolao_schema_migrations
+             WHERE versao = ?'
+        );
+        $stmt->execute([self::TARGET_VERSION]);
+
+        return (int) $stmt->fetchColumn() === 1;
+    }
+
+    private static function get_compatibility_issues($pdo) {
+        $issues = [];
+
+        $null_competitions = (int) $pdo->query(
+            'SELECT COUNT(*) FROM bolao_competicoes WHERE competicao_id IS NULL'
+        )->fetchColumn();
+        if ($null_competitions > 0) {
+            $issues[] = $null_competitions . ' bolão(ões) sem competicao_id.';
+        }
+
+        $invalid_seasons = (int) $pdo->query(
+            "SELECT COUNT(*)
+             FROM bolao_competicoes
+             WHERE temporada IS NULL
+                OR CHAR_LENGTH(CAST(temporada AS CHAR)) > 20"
+        )->fetchColumn();
+        if ($invalid_seasons > 0) {
+            $issues[] = $invalid_seasons . ' temporada(s) incompatível(is) com VARCHAR(20).';
+        }
+
+        $orphan_competitions = (int) $pdo->query(
+            'SELECT COUNT(*)
+             FROM bolao_competicoes bc
+             LEFT JOIN dim_competicoes dc ON dc.id = bc.competicao_id
+             WHERE dc.id IS NULL'
+        )->fetchColumn();
+        if ($orphan_competitions > 0) {
+            $issues[] = $orphan_competitions . ' vínculo(s) com competição inexistente no DW.';
+        }
+
+        $invalid_slugs = (int) $pdo->query(
+            "SELECT COUNT(*)
+             FROM bolao_competicoes
+             WHERE slug_bolao IS NULL OR TRIM(slug_bolao) = ''"
+        )->fetchColumn();
+        if ($invalid_slugs > 0) {
+            $issues[] = $invalid_slugs . ' bolão(ões) sem slug.';
+        }
+
+        return $issues;
     }
 }

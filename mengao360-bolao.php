@@ -13,6 +13,11 @@ if (!defined('ABSPATH')) {
 }
 
 define('MENGAO360_BOLAO_VERSION', '0.1.4');
+define('MENGAO360_BOLAO_BUILD', 'commercial-c1-pre-homologation.1');
+define(
+    'MENGAO360_BOLAO_ASSET_VERSION',
+    MENGAO360_BOLAO_VERSION . '-' . MENGAO360_BOLAO_BUILD
+);
 define('MENGAO360_BOLAO_PATH', plugin_dir_path(__FILE__));
 define('MENGAO360_BOLAO_URL', plugin_dir_url(__FILE__));
 
@@ -38,7 +43,8 @@ require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-ajax.php';
 
 /**
  * Resolve o idioma atual do Bolão.
- * Prioridade: ?lang=URL > helper global do projeto > fallback pt-BR.
+ * Prioridade: ?lang=URL > prefixo da URL pública > locale da página >
+ * helper global do projeto > fallback pt-BR.
  */
 if (!function_exists('m360_bolao_get_lang')) {
     function m360_bolao_get_lang() {
@@ -50,6 +56,30 @@ if (!function_exists('m360_bolao_get_lang')) {
             if (in_array($lang, $idiomas_permitidos, true)) {
                 return $lang;
             }
+        }
+
+        $request_path = isset($_SERVER['REQUEST_URI'])
+            ? (string) wp_parse_url(wp_unslash($_SERVER['REQUEST_URI']), PHP_URL_PATH)
+            : '';
+        if (preg_match('#^/en(?:/|$)#i', $request_path)) {
+            return 'en-US';
+        }
+        if (preg_match('#^/es(?:/|$)#i', $request_path)) {
+            return 'es-ES';
+        }
+
+        $locale = function_exists('determine_locale') ? determine_locale() : get_locale();
+        $locale_normalized = str_replace('_', '-', (string) $locale);
+        $locale_map = [
+            'pt' => 'pt-BR',
+            'pt-BR' => 'pt-BR',
+            'en' => 'en-US',
+            'en-US' => 'en-US',
+            'es' => 'es-ES',
+            'es-ES' => 'es-ES',
+        ];
+        if (isset($locale_map[$locale_normalized])) {
+            return $locale_map[$locale_normalized];
         }
 
         if (function_exists('m360_get_lang')) {
@@ -155,6 +185,11 @@ if (is_admin()) {
     if (file_exists($m360_bolao_admin_pools_file)) {
         require_once $m360_bolao_admin_pools_file;
     }
+
+    $m360_bolao_pre_homologation_file = MENGAO360_BOLAO_PATH . 'includes/class-bolao-pre-homologation.php';
+    if (file_exists($m360_bolao_pre_homologation_file)) {
+        require_once $m360_bolao_pre_homologation_file;
+    }
 }
 
 function mengao360_bolao_enqueue_assets() {
@@ -162,14 +197,14 @@ function mengao360_bolao_enqueue_assets() {
         'mengao360-bolao-css',
         MENGAO360_BOLAO_URL . 'assets/css/bolao.css',
         [],
-        MENGAO360_BOLAO_VERSION
+        MENGAO360_BOLAO_ASSET_VERSION
     );
 
     wp_enqueue_script(
         'mengao360-bolao-js',
         MENGAO360_BOLAO_URL . 'assets/js/bolao.js',
         ['jquery'],
-        MENGAO360_BOLAO_VERSION,
+        MENGAO360_BOLAO_ASSET_VERSION,
         true
     );
 	
@@ -209,6 +244,10 @@ function mengao360_bolao_init() {
 
     if (is_admin() && class_exists('Mengao360_Bolao_Admin_Pools')) {
         Mengao360_Bolao_Admin_Pools::init();
+    }
+
+    if (is_admin() && class_exists('Mengao360_Bolao_Pre_Homologation')) {
+        Mengao360_Bolao_Pre_Homologation::init();
     }
 }
 add_action('init', 'mengao360_bolao_init');

@@ -47,6 +47,42 @@ oficial, justificativa e expiração. Ele grava
 8. criar um bolão de homologação como rascunho;
 9. publicar somente depois dos testes de isolamento e bloqueio.
 
+## Pré-homologação controlada em produção
+
+Na ausência de staging, o plugin pode ser instalado primeiro com a migração
+bloqueada. O build operacional é identificado pela constante
+`MENGAO360_BOLAO_BUILD`, sem atribuir número de release à frente C.1.
+
+Após a atualização, acessar **Mega Bolão 360 → Pré-homologação**. Essa tela:
+
+- executa somente `SELECT`, consultas em `information_schema` e leitura de
+  atributos da conexão;
+- não registra handler de escrita;
+- não executa DDL;
+- não altera opções do WordPress;
+- confirma tabelas, procedure pós-ETL e compatibilidade dos dados;
+- registra contagens para comparação antes/depois;
+- exibe o estado legado do bolão da Copa;
+- verifica o catálogo PT-BR/EN-US;
+- bloqueia o gate quando a constante de migração estiver habilitada fora da
+  janela controlada.
+
+O resultado esperado antes do backup é
+`PRONTO PARA PRÉ-HOMOLOGAÇÃO`. A constante
+`MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS` deve permanecer ausente ou `false`.
+
+O widget público continua resolvendo o idioma nesta ordem:
+
+1. atributo `idioma` do shortcode;
+2. parâmetro `?lang=`;
+3. prefixo público `/en/` ou `/es/`;
+4. locale resolvido pelo WordPress;
+5. helper do portal;
+6. fallback `pt-BR`.
+
+O JavaScript usa prioritariamente o `data-lang` do próprio widget. Isso evita
+que mensagens AJAX ou interativas recebam o idioma global de outra página.
+
 A migração:
 
 - cria as tabelas da fundação;

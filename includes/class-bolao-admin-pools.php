@@ -349,14 +349,37 @@ class Mengao360_Bolao_Admin_Pools {
                 . esc_html(implode(', ', $preflight['missing_legacy_tables'])) . '</p>';
         }
 
+        if (!empty($preflight['compatibility_issues'])) {
+            echo '<p><strong>' . esc_html__('Migração bloqueada por incompatibilidade de dados:', 'mengao360-bolao') . '</strong></p><ul>';
+            foreach ($preflight['compatibility_issues'] as $issue) {
+                echo '<li>' . esc_html($issue) . '</li>';
+            }
+            echo '</ul>';
+        }
+
+        if (!empty($preflight['missing_foundation_columns'])) {
+            echo '<p>' . esc_html__('Colunas C.1 pendentes: ', 'mengao360-bolao')
+                . esc_html(implode(', ', $preflight['missing_foundation_columns'])) . '</p>';
+        }
+
+        if (!empty($preflight['missing_foundation_indexes'])) {
+            echo '<p>' . esc_html__('Índices C.1 pendentes: ', 'mengao360-bolao')
+                . esc_html(implode(', ', $preflight['missing_foundation_indexes'])) . '</p>';
+        }
+
         if (!$preflight['ready'] && empty($preflight['missing_legacy_tables'])) {
-            if ($preflight['migrations_allowed']) {
+            if ($preflight['migrations_allowed'] && empty($preflight['compatibility_issues'])) {
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
                 wp_nonce_field('m360_bolao_pool_action');
                 echo '<input type="hidden" name="action" value="m360_bolao_pool_action">';
                 echo '<input type="hidden" name="acao_bolao" value="migrate">';
                 submit_button(__('Aplicar migração C.1', 'mengao360-bolao'), 'secondary', 'submit', false);
                 echo '</form>';
+            } elseif (!empty($preflight['compatibility_issues'])) {
+                echo '<p>' . esc_html__(
+                    'O botão de migração permanecerá indisponível até a correção das incompatibilidades.',
+                    'mengao360-bolao'
+                ) . '</p>';
             } else {
                 echo '<p><code>define(\'MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS\', true);</code></p>';
                 echo '<p>' . esc_html__('Habilite a constante somente durante uma janela controlada com backup validado.', 'mengao360-bolao') . '</p>';

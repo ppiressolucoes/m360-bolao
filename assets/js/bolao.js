@@ -125,6 +125,10 @@
         return $('.m360-bolao').data('competicao') || '';
     }
 
+    function getBolaoId() {
+        return parseInt($('.m360-bolao').first().data('bolao-id'), 10) || 0;
+    }
+
     function setFeedback(elemento, mensagem, tipo) {
         if (!elemento || elemento.length === 0) {
             return;
@@ -283,6 +287,7 @@
             action: 'm360_salvar_palpite',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             jogo_id: jogoId,
             competicao_slug: competicaoSlug,
             placar_mandante: placarMandante,
@@ -325,6 +330,7 @@
             action: 'm360_criar_liga',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             competicao_slug: competicaoSlug,
             nome_liga: nomeLiga
         }).done(function (response) {
@@ -381,6 +387,7 @@
             action: 'm360_entrar_liga',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             competicao_slug: competicaoSlug,
             codigo_convite: codigoConvite
         }).done(function (response) {

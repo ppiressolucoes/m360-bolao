@@ -55,7 +55,7 @@ class Mengao360_Bolao_DB {
      * 1 = ainda permite palpite
      * 0 = jogo iniciado/encerrado, bloquear palpite
      */
-    public static function get_jogos_por_data($competicao_slug, $data_jogo) {
+    public static function get_jogos_por_data($competicao_slug, $data_jogo, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         if (!$pdo) {
@@ -63,6 +63,27 @@ class Mengao360_Bolao_DB {
         }
 
         try {
+            $has_overrides = class_exists('Mengao360_Bolao_Schema')
+                && Mengao360_Bolao_Schema::table_exists($pdo, 'bolao_resultados_overrides');
+            $override_join = $has_overrides
+                ? "LEFT JOIN bolao_resultados_overrides bro
+                    ON bro.bolao_competicao_id = bc.bolao_competicao_id
+                   AND bro.jogo_id = fj.id
+                   AND bro.status = 'ATIVO'
+                   AND bro.dth_expiracao > NOW()"
+                : '';
+            $result_join_guard = $has_overrides
+                ? "AND (brp.fonte_resultado <> 'ADMIN_MANUAL' OR bro.override_id IS NOT NULL)"
+                : '';
+            $home_result = $has_overrides
+                ? "CASE WHEN brp.fonte_resultado = 'ADMIN_MANUAL'
+                        THEN bro.placar_mandante ELSE brp.placar_mandante END"
+                : 'brp.placar_mandante';
+            $away_result = $has_overrides
+                ? "CASE WHEN brp.fonte_resultado = 'ADMIN_MANUAL'
+                        THEN bro.placar_visitante ELSE brp.placar_visitante END"
+                : 'brp.placar_visitante';
+
             $sql = "
                 SELECT
                     fj.id AS jogo_id,
@@ -84,8 +105,8 @@ class Mengao360_Bolao_DB {
                      * Traz o resultado já confirmado/apurado no bolão, quando existir,
                      * sem depender de atualização imediata da API na fato_jogos.
                      */
-                    brp.placar_mandante AS resultado_placar_mandante,
-                    brp.placar_visitante AS resultado_placar_visitante,
+                    {$home_result} AS resultado_placar_mandante,
+                    {$away_result} AS resultado_placar_visitante,
                     brp.fonte_resultado,
                     bsr.codigo AS resultado_status_codigo,
                     bsr.nome AS resultado_status_nome,
@@ -100,9 +121,11 @@ class Mengao360_Bolao_DB {
                     ON dc.id = fj.competicao_id
                 LEFT JOIN bolao_competicoes bc
                     ON bc.competicao_id = dc.id
+                {$override_join}
                 LEFT JOIN bolao_resultados_partidas brp
                     ON brp.bolao_competicao_id = bc.bolao_competicao_id
                    AND brp.jogo_id = fj.id
+                   {$result_join_guard}
                 LEFT JOIN bolao_status_resultado bsr
                     ON bsr.status_resultado_id = brp.status_resultado_id
                 LEFT JOIN dim_times tm
@@ -111,11 +134,17 @@ class Mengao360_Bolao_DB {
                     ON tv.id = fj.visitante_id
                 WHERE dc.slug = ?
                   AND DATE(fj.data_jogo) = ?
+                  AND (? = 0 OR bc.bolao_competicao_id = ?)
                 ORDER BY fj.data_jogo, fj.id
             ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$competicao_slug, $data_jogo]);
+            $stmt->execute([
+                $competicao_slug,
+                $data_jogo,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
+            ]);
 
             return $stmt->fetchAll();
 
@@ -128,7 +157,7 @@ class Mengao360_Bolao_DB {
     /**
      * Busca palpites já salvos pelo usuário na data exibida.
      */
-    public static function get_palpites_usuario_por_data($competicao_slug, $usuario_bolao_id, $data_jogo) {
+    public static function get_palpites_usuario_por_data($competicao_slug, $usuario_bolao_id, $data_jogo, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         if (!$pdo || empty($usuario_bolao_id) || empty($data_jogo)) {
@@ -164,13 +193,16 @@ class Mengao360_Bolao_DB {
                 WHERE dc.slug = ?
                   AND bp.usuario_bolao_id = ?
                   AND DATE(fj.data_jogo) = ?
+                  AND (? = 0 OR bp.bolao_competicao_id = ?)
             ";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 $competicao_slug,
                 $usuario_bolao_id,
-                $data_jogo
+                $data_jogo,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $linhas = $stmt->fetchAll();
@@ -192,7 +224,7 @@ class Mengao360_Bolao_DB {
      *
      * Retorna valores padrão quando o usuário ainda não possui pontuação apurada.
      */
-    public static function get_resumo_usuario($competicao_slug, $usuario_bolao_id) {
+    public static function get_resumo_usuario($competicao_slug, $usuario_bolao_id, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         if (!$pdo || empty($competicao_slug) || empty($usuario_bolao_id)) {
@@ -224,6 +256,7 @@ class Mengao360_Bolao_DB {
                   AND br.usuario_bolao_id = ?
                   AND tr.codigo = 'GERAL'
                   AND br.liga_id IS NULL
+                  AND (? = 0 OR br.bolao_competicao_id = ?)
                 ORDER BY br.dth_atualizacao DESC
                 LIMIT 1
             ";
@@ -231,7 +264,9 @@ class Mengao360_Bolao_DB {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 $competicao_slug,
-                $usuario_bolao_id
+                $usuario_bolao_id,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $resumo = $stmt->fetch();
@@ -266,7 +301,7 @@ class Mengao360_Bolao_DB {
      *
      * Usado para exibir o Top 10 na página do bolão.
      */
-    public static function get_ranking_geral($competicao_slug, $limite = 10) {
+    public static function get_ranking_geral($competicao_slug, $limite = 10, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         if (!$pdo || empty($competicao_slug)) {
@@ -296,6 +331,7 @@ class Mengao360_Bolao_DB {
                 WHERE dc.slug = ?
                   AND tr.codigo = 'GERAL'
                   AND br.liga_id IS NULL
+                  AND (? = 0 OR br.bolao_competicao_id = ?)
                 ORDER BY
                     br.posicao ASC,
                     br.pontos_total DESC,
@@ -306,7 +342,11 @@ class Mengao360_Bolao_DB {
             ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$competicao_slug]);
+            $stmt->execute([
+                $competicao_slug,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
+            ]);
 
             return $stmt->fetchAll();
 
@@ -325,7 +365,7 @@ class Mengao360_Bolao_DB {
      * - Exibe palpites enviados mesmo antes de qualquer jogo apurado;
      * - Busca posições nos rankings GERAL, LIGA e DIA quando já existirem.
      */
-    public static function get_resumo_dashboard_usuario($competicao_slug, $usuario_bolao_id, $data_referencia = null) {
+    public static function get_resumo_dashboard_usuario($competicao_slug, $usuario_bolao_id, $data_referencia = null, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         $resumo_padrao = (object) [
@@ -357,11 +397,14 @@ class Mengao360_Bolao_DB {
                     ON dc.id = bc.competicao_id
                 WHERE dc.slug = ?
                   AND bp.usuario_bolao_id = ?
+                  AND (? = 0 OR bp.bolao_competicao_id = ?)
             ");
 
             $stmt->execute([
                 $competicao_slug,
-                $usuario_bolao_id
+                $usuario_bolao_id,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $palpites_enviados = (int) $stmt->fetchColumn();
@@ -382,13 +425,16 @@ class Mengao360_Bolao_DB {
                   AND br.usuario_bolao_id = ?
                   AND tr.codigo = 'GERAL'
                   AND br.liga_id IS NULL
+                  AND (? = 0 OR br.bolao_competicao_id = ?)
                 ORDER BY br.dth_atualizacao DESC
                 LIMIT 1
             ");
 
             $stmt->execute([
                 $competicao_slug,
-                $usuario_bolao_id
+                $usuario_bolao_id,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $posicao_geral = $stmt->fetchColumn();
@@ -411,11 +457,14 @@ class Mengao360_Bolao_DB {
                   AND br.usuario_bolao_id = ?
                   AND tr.codigo = 'LIGA'
                   AND br.liga_id IS NOT NULL
+                  AND (? = 0 OR br.bolao_competicao_id = ?)
             ");
 
             $stmt->execute([
                 $competicao_slug,
-                $usuario_bolao_id
+                $usuario_bolao_id,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $posicao_liga = $stmt->fetchColumn();
@@ -439,6 +488,7 @@ class Mengao360_Bolao_DB {
                   AND tr.codigo = 'DIA'
                   AND br.liga_id IS NULL
                   AND br.rodada = ?
+                  AND (? = 0 OR br.bolao_competicao_id = ?)
                 ORDER BY br.dth_atualizacao DESC
                 LIMIT 1
             ");
@@ -446,7 +496,9 @@ class Mengao360_Bolao_DB {
             $stmt->execute([
                 $competicao_slug,
                 $usuario_bolao_id,
-                $data_referencia
+                $data_referencia,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $posicao_dia = $stmt->fetchColumn();

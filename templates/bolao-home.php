@@ -457,7 +457,11 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
 
 ?>
 
-<div class="m360-bolao" data-competicao="<?php echo esc_attr($competicao_slug); ?>" data-lang="<?php echo esc_attr($m360_lang); ?>">
+<div class="m360-bolao"
+     data-bolao-id="<?php echo esc_attr($bolao_competicao_id); ?>"
+     data-bolao="<?php echo esc_attr($bolao_slug); ?>"
+     data-competicao="<?php echo esc_attr($competicao_slug); ?>"
+     data-lang="<?php echo esc_attr($m360_lang); ?>">
 
     <!-- ============================================================
          Hero do Bolão
@@ -669,15 +673,13 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                     // ============================================================
                     // Controle de abertura/bloqueio do palpite.
                     //
-                    // Regra oficial Sprint 5:
-                    // - Palpites encerram 10 minutos antes do horário da partida.
+                    // Regra configurada no bolão:
+                    // - Palpites encerram N minutos antes da partida.
                     //
                     // Observação:
                     // - A coluna palpite_aberto ainda é respeitada como fallback;
                     // - O cálculo abaixo usa o horário completo do jogo quando disponível.
                     // ============================================================
-                    $minutos_bloqueio_palpite = 10;
-
                     $data_hora_jogo = $jogo->data_jogo_completa
                         ?? ($jogo->data_jogo ?? '');
 
@@ -756,19 +758,16 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                         'GLOBAL'
                     );
 
-                    $status_bloqueados = [
-                        'FINISHED',
-                        'IN_PLAY',
-                        'LIVE',
-                        'PAUSED',
-                        'SUSPENDED',
-                        'CANCELLED',
-                        'CANCELED'
+                    $status_abertos = [
+                        'TIMED',
+                        'SCHEDULED',
+                        'NOT_STARTED',
+                        'NS',
                     ];
 
-                    $palpite_aberto_por_status = !in_array(
+                    $palpite_aberto_por_status = in_array(
                         $status_jogo_atual,
-                        $status_bloqueados,
+                        $status_abertos,
                         true
                     );
 
@@ -784,6 +783,7 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                         && $mandante_id_jogo !== $visitante_id_jogo;
 
                     $palpite_aberto = $confronto_definido
+                        && $bolao_aberto
                         && $palpite_aberto_por_status
                         && $palpite_aberto_por_horario;
 

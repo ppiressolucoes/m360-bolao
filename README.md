@@ -17,8 +17,8 @@ O **M360 Core** permanece como plugin editorial independente. Os dois plugins:
 - só podem interoperar futuramente por contratos públicos, opcionais e
   versionados, nunca por incorporação de código.
 
-Status atual: baseline de produção recuperado; evolução multi-competição em
-discovery técnico.
+Status atual: baseline de produção recuperado e fundação multi-competição C.1
+implementada em branch de homologação. Nenhuma release foi numerada.
 
 Escopo oficial:
 [Sprint Comercial C.1 — Mega Bolão 360 Multi-Competition Foundation](https://github.com/ppiressolucoes/M360-Core/issues/24).
@@ -49,11 +49,15 @@ commits posteriores à tag.
 - tabelas esportivas `dim_competicoes`, `dim_times` e `fato_jogos`;
 - catálogo `m360_i18n_publico`.
 
-O plugin não cria nem migra o schema atual durante a ativação.
+O plugin não migra o schema durante a ativação. A migração C.1 é idempotente,
+bloqueada por padrão e só pode ser iniciada por administrador durante uma
+janela controlada.
 
 ## Contratos públicos atuais
 
-- shortcode: `[bolao_mengao]`;
+- shortcode legado: `[bolao_mengao competicao="fifa-world-cup"]`;
+- shortcode explícito multi-competição:
+  `[bolao_mengao bolao="slug-do-bolao" idioma="pt-BR"]`;
 - AJAX autenticado:
   - `m360_salvar_palpite`;
   - `m360_criar_liga`;
@@ -72,6 +76,7 @@ Leia:
 - [Baseline recuperado](docs/BASELINE.md);
 - [Schema atual](docs/SCHEMA_BASELINE.md);
 - [Arquitetura multi-competição](docs/ARCHITECTURE.md).
+- [Fundação C.1 e homologação](docs/C1_FOUNDATION.md).
 
 ## Empacotamento
 

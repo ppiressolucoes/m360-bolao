@@ -7,7 +7,9 @@
 /.vscode/
 *.log
 *.sql
+!database/
+!database/migrations/
+!database/migrations/*.sql
 *.zip
 .env
 .env.*
-

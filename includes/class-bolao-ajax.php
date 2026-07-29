@@ -176,9 +176,10 @@ class Mengao360_Bolao_Ajax {
         $jogo_id = isset($_POST['jogo_id']) ? absint($_POST['jogo_id']) : 0;
         $placar_mandante = self::validar_placar_post('placar_mandante');
         $placar_visitante = self::validar_placar_post('placar_visitante');
+        $bolao_competicao_id = isset($_POST['bolao_id']) ? absint($_POST['bolao_id']) : 0;
         $competicao_slug = isset($_POST['competicao_slug']) ? sanitize_text_field(wp_unslash($_POST['competicao_slug'])) : '';
 
-        if ($jogo_id <= 0 || empty($competicao_slug)) {
+        if ($jogo_id <= 0 || $bolao_competicao_id <= 0 || empty($competicao_slug)) {
             wp_send_json_error(['mensagem' => self::t('dados_palpite_invalidos')]);
         }
 
@@ -200,30 +201,36 @@ class Mengao360_Bolao_Ajax {
 
         try {
             // ------------------------------------------------------------
-            // Busca bolão ativo e status ABERTO para o palpite.
+            // Resolve o bolão explicitamente. O slug da competição não é
+            // suficiente quando existem temporadas ou bolões paralelos.
             // ------------------------------------------------------------
+            $contexto = Mengao360_Bolao_Context::resolve(
+                $pdo,
+                '',
+                $competicao_slug,
+                $bolao_competicao_id
+            );
+
+            if (is_wp_error($contexto) || strtoupper((string) $contexto->estado_operacional) !== 'ABERTO') {
+                wp_send_json_error(['mensagem' => self::t('bolao_inativo')]);
+            }
+
             $stmt = $pdo->prepare("
-                SELECT 
-                    bc.bolao_competicao_id,
-                    bsp.status_palpite_id
-                FROM bolao_competicoes bc
-                INNER JOIN dim_competicoes dc
-                    ON dc.id = bc.competicao_id
-                INNER JOIN bolao_status_palpite bsp
-                    ON bsp.codigo = 'ABERTO'
-                WHERE dc.slug = ?
-                  AND bc.ind_ativo = 1
+                SELECT status_palpite_id
+                FROM bolao_status_palpite
+                WHERE codigo = 'ABERTO'
                 LIMIT 1
             ");
-            $stmt->execute([$competicao_slug]);
-            $bolao = $stmt->fetch();
+            $stmt->execute();
+            $status_palpite_id = (int) $stmt->fetchColumn();
 
-            if (!$bolao) {
+            if ($status_palpite_id <= 0) {
                 wp_send_json_error(['mensagem' => self::t('bolao_inativo')]);
             }
 
             // ------------------------------------------------------------
-            // Proteção server-side: bloqueia palpites 10 minutos antes do jogo.
+            // Proteção server-side centralizada: times definidos, status
+            // permitido e janela de fechamento configurada no bolão.
             // ------------------------------------------------------------
             $stmt = $pdo->prepare("
                 SELECT
@@ -240,50 +247,30 @@ class Mengao360_Bolao_Ajax {
                       WHERE bolao_competicao_id = ?
                       LIMIT 1
                   )
-                  /*
-                   * Defesa server-side: confrontos com placeholder da API
-                   * nunca podem receber palpites, ainda que o endpoint AJAX
-                   * seja chamado fora da interface do bolão.
-                   */
-                  AND mandante_id IS NOT NULL
-                  AND visitante_id IS NOT NULL
-                  AND mandante_id <> 9999
-                  AND visitante_id <> 9999
-                  AND mandante_id <> visitante_id
                 LIMIT 1
             ");
-            $stmt->execute([$jogo_id, $bolao->bolao_competicao_id]);
+            $stmt->execute([$jogo_id, $bolao_competicao_id]);
             $jogo = $stmt->fetch();
 
             if (!$jogo) {
                 wp_send_json_error(['mensagem' => self::t('jogo_nao_localizado')]);
             }
 
-            $status_jogo = strtoupper((string) ($jogo->status_jogo ?? ''));
-
-            if (in_array($status_jogo, ['FINISHED', 'FINISH', 'FT', 'CANCELLED', 'CANCELED', 'POSTPONED', 'SUSPENDED'], true)) {
-                wp_send_json_error(['mensagem' => self::t('jogo_fechado')]);
-            }
-
-            $timezone_brasilia = new DateTimeZone('America/Sao_Paulo');
-
-            $data_jogo_dt = DateTime::createFromFormat(
-                'Y-m-d H:i:s',
-                (string) $jogo->data_jogo,
-                $timezone_brasilia
+            $guard = Mengao360_Bolao_Game_Guard::evaluate(
+                $jogo,
+                (int) $contexto->janela_fechamento_minutos
             );
 
-            if (!$data_jogo_dt) {
-                $data_jogo_dt = new DateTime((string) $jogo->data_jogo, $timezone_brasilia);
+            if (empty($guard['allowed'])) {
+                wp_send_json_error(['mensagem' => $guard['message'] ?: self::t('jogo_fechado')]);
             }
 
-            $timestamp_jogo = $data_jogo_dt->getTimestamp();
-            $timestamp_bloqueio = $timestamp_jogo - (10 * MINUTE_IN_SECONDS);
-            $timestamp_agora = (new DateTime('now', $timezone_brasilia))->getTimestamp();
-
-            if ($timestamp_agora >= $timestamp_bloqueio) {
-                wp_send_json_error(['mensagem' => self::t('jogo_fechado')]);
-            }
+            Mengao360_Bolao_Context::ensure_participant(
+                $pdo,
+                $bolao_competicao_id,
+                $usuario_bolao_id,
+                get_current_user_id()
+            );
 
             // ------------------------------------------------------------
             // Grava ou atualiza o palpite.
@@ -308,10 +295,10 @@ class Mengao360_Bolao_Ajax {
             ");
 
             $stmt->execute([
-                (int) $bolao->bolao_competicao_id,
+                $bolao_competicao_id,
                 $usuario_bolao_id,
                 $jogo_id,
-                (int) $bolao->status_palpite_id,
+                $status_palpite_id,
                 $placar_mandante,
                 $placar_visitante
             ]);
@@ -341,11 +328,12 @@ class Mengao360_Bolao_Ajax {
         }
 
         $competicao_slug = isset($_POST['competicao_slug']) ? sanitize_text_field(wp_unslash($_POST['competicao_slug'])) : '';
+        $bolao_competicao_id = isset($_POST['bolao_id']) ? absint($_POST['bolao_id']) : 0;
         $nome_liga = isset($_POST['nome_liga']) ? sanitize_text_field(wp_unslash($_POST['nome_liga'])) : '';
 
         $nome_liga = trim($nome_liga);
 
-        if (empty($competicao_slug) || empty($nome_liga)) {
+        if (empty($competicao_slug) || $bolao_competicao_id <= 0 || empty($nome_liga)) {
             wp_send_json_error(['mensagem' => self::t('informe_nome_liga')]);
         }
 
@@ -366,7 +354,8 @@ class Mengao360_Bolao_Ajax {
         $resultado = Mengao360_Bolao_Ligas::criar_liga(
             $competicao_slug,
             $nome_liga,
-            $usuario_bolao_id
+            $usuario_bolao_id,
+            $bolao_competicao_id
         );
 
         if (empty($resultado['sucesso'])) {
@@ -410,11 +399,12 @@ class Mengao360_Bolao_Ajax {
         }
 
         $competicao_slug = isset($_POST['competicao_slug']) ? sanitize_text_field(wp_unslash($_POST['competicao_slug'])) : '';
+        $bolao_competicao_id = isset($_POST['bolao_id']) ? absint($_POST['bolao_id']) : 0;
         $codigo_convite = isset($_POST['codigo_convite']) ? sanitize_text_field(wp_unslash($_POST['codigo_convite'])) : '';
 
         $codigo_convite = strtoupper(trim($codigo_convite));
 
-        if (empty($competicao_slug) || empty($codigo_convite)) {
+        if (empty($competicao_slug) || $bolao_competicao_id <= 0 || empty($codigo_convite)) {
             wp_send_json_error(['mensagem' => self::t('informe_codigo_liga')]);
         }
 
@@ -427,7 +417,8 @@ class Mengao360_Bolao_Ajax {
         $resultado = Mengao360_Bolao_Ligas::entrar_liga_por_codigo(
             $competicao_slug,
             $codigo_convite,
-            $usuario_bolao_id
+            $usuario_bolao_id,
+            $bolao_competicao_id
         );
 
         if (empty($resultado['sucesso'])) {

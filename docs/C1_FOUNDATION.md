@@ -114,6 +114,8 @@ A migração:
 6. Jogo iniciado, encerrado, suspenso, cancelado ou adiado é bloqueado.
 7. A janela configurada é respeitada no front-end e no AJAX.
 8. Bolão fora de `ABERTO` não aceita palpite, criação ou entrada em liga.
+   A página pública substitui chamadas de participação por um estado somente
+   leitura, mantendo resultados, ranking e ligas históricas disponíveis.
 9. Override manual expira e deixa de ser publicado.
 10. Nenhuma ação do WordPress altera `dim_*` ou `fato_*`.
 

@@ -25,6 +25,7 @@ class Mengao360_Bolao_Shortcodes {
         $bolao_competicao_id = 0;
         $minutos_bloqueio_palpite = 10;
         $bolao_aberto = false;
+        $bolao_estado_operacional = 'RASCUNHO';
         $usuario_logado = is_user_logged_in();
         $usuario_atual = wp_get_current_user();
 
@@ -138,7 +139,8 @@ class Mengao360_Bolao_Shortcodes {
             $bolao_slug = (string) $contexto_bolao->slug_bolao;
             $competicao_slug = (string) $contexto_bolao->competicao_slug;
             $minutos_bloqueio_palpite = (int) $contexto_bolao->janela_fechamento_minutos;
-            $bolao_aberto = strtoupper((string) $contexto_bolao->estado_operacional) === 'ABERTO';
+            $bolao_estado_operacional = strtoupper((string) $contexto_bolao->estado_operacional);
+            $bolao_aberto = $bolao_estado_operacional === 'ABERTO';
 
             // ------------------------------------------------------------
             // 3.1. Carrega todas as datas com jogos da competição

@@ -455,6 +455,9 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
     return [];
 };
 
+$m360_bolao_encerrado = isset($bolao_estado_operacional)
+    && $bolao_estado_operacional === 'ENCERRADO';
+
 ?>
 
 <div class="m360-bolao"
@@ -471,15 +474,46 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
             <span class="m360-bolao-tag"><?php echo $m360_txt_esc('LABEL', 'meu_bolao_360', 'Meu Bolão 360', 'BOLAO'); ?></span>
             <h1><?php echo $m360_txt_esc('LABEL', 'titulo_bolao_wc26', 'Bolão Copa do Mundo FIFA 2026', 'BOLAO'); ?></h1>
             <p>
-                <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                <?php if ($m360_bolao_encerrado): ?>
+                    <?php echo esc_html($m360_inline(
+                        'Competição encerrada. Consulte os resultados, palpites apurados e o ranking final.',
+                        'Pool closed. Browse the results, scored predictions and final ranking.',
+                        'Quiniela finalizada. Consulta los resultados, pronósticos calculados y la clasificación final.'
+                    )); ?>
+                <?php else: ?>
+                    <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                <?php endif; ?>
             </p>
         </div>
     </section>
 
+    <?php if (!$bolao_aberto): ?>
+        <section class="m360-bolao-card m360-bolao-estado-card">
+            <h2>
+                <?php echo esc_html($m360_bolao_encerrado
+                    ? $m360_inline('Bolão encerrado', 'Pool closed', 'Quiniela finalizada')
+                    : $m360_inline('Bolão indisponível para participação', 'Pool unavailable for participation', 'Quiniela no disponible para participar')); ?>
+            </h2>
+            <p>
+                <?php echo esc_html($m360_bolao_encerrado
+                    ? $m360_inline(
+                        'O período de palpites e participação em ligas terminou. Resultados e ranking permanecem disponíveis para consulta.',
+                        'Predictions and league participation have ended. Results and rankings remain available for viewing.',
+                        'El período de pronósticos y participación en ligas terminó. Los resultados y clasificaciones siguen disponibles.'
+                    )
+                    : $m360_inline(
+                        'Este bolão ainda não está aberto ou foi temporariamente bloqueado.',
+                        'This pool is not open yet or has been temporarily blocked.',
+                        'Esta quiniela aún no está abierta o fue bloqueada temporalmente.'
+                    )); ?>
+            </p>
+        </section>
+    <?php endif; ?>
+
     <!-- ============================================================
          Card de acesso para visitantes
          ============================================================ -->
-    <?php if (!$usuario_logado): ?>
+    <?php if (!$usuario_logado && $bolao_aberto): ?>
 
         <section id="m360-bolao-login" class="m360-bolao-card">
             <!-- ============================================================
@@ -497,7 +531,7 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
             </div>
         </section>
 
-    <?php else: ?>
+    <?php elseif ($usuario_logado): ?>
 
         <!-- ============================================================
              Painel resumido do usuário logado
@@ -1152,7 +1186,17 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
     <section class="m360-bolao-card m360-bolao-ligas-card">
         <h2><?php echo $m360_txt_esc('LABEL', 'minhas_ligas', 'Minhas Ligas', 'BOLAO'); ?></h2>
 
-        <?php if (!$usuario_logado): ?>
+        <?php if (!$bolao_aberto): ?>
+
+            <p class="m360-bolao-aviso">
+                <?php echo esc_html($m360_inline(
+                    'A criação e a entrada em ligas estão encerradas. Usuários autenticados ainda podem consultar suas ligas históricas.',
+                    'Creating and joining leagues is closed. Signed-in users can still view their historical leagues.',
+                    'La creación y el ingreso a ligas están cerrados. Los usuarios autenticados aún pueden consultar sus ligas históricas.'
+                )); ?>
+            </p>
+
+        <?php elseif (!$usuario_logado): ?>
 
             <!-- ============================================================
                  Visitante: chamada para login antes de criar/entrar em liga.
@@ -1226,6 +1270,10 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                 </div>
 
             </div>
+
+        <?php endif; ?>
+
+        <?php if ($usuario_logado): ?>
 
             <!-- ============================================================
                  Lista de ligas do usuário.

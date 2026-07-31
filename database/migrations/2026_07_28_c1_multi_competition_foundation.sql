@@ -10,6 +10,10 @@
 -- Este arquivo documenta o contrato. A aplicação idempotente é feita por
 -- Mengao360_Bolao_Schema, após habilitação explícita da constante
 -- MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS.
+--
+-- Bolões legados ativos sem data_fechamento exigem classificação explícita
+-- no formulário administrativo. Este contrato SQL não deve ser aplicado
+-- diretamente porque não contém essa decisão operacional nem a auditoria.
 
 ALTER TABLE bolao_competicoes
     MODIFY competicao_id BIGINT UNSIGNED NOT NULL,

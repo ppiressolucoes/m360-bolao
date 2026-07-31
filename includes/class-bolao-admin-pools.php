@@ -76,7 +76,25 @@ class Mengao360_Bolao_Admin_Pools {
 
         try {
             if ($action === 'migrate') {
-                Mengao360_Bolao_Schema::migrate($pdo, get_current_user_id());
+                $confirmed = isset($_POST['confirmar_estados_legados'])
+                    && (string) wp_unslash($_POST['confirmar_estados_legados']) === '1';
+                if (!$confirmed) {
+                    throw new RuntimeException('Confirme a classificação dos bolões legados antes de migrar.');
+                }
+
+                $raw_states = isset($_POST['estado_legado']) && is_array($_POST['estado_legado'])
+                    ? wp_unslash($_POST['estado_legado'])
+                    : [];
+                $legacy_states = [];
+                foreach ($raw_states as $pool_id => $state) {
+                    $legacy_states[absint($pool_id)] = strtoupper(sanitize_key($state));
+                }
+
+                Mengao360_Bolao_Schema::migrate(
+                    $pdo,
+                    get_current_user_id(),
+                    $legacy_states
+                );
                 self::redirect('success', 'Migração da fundação multi-competição aplicada.');
             }
 
@@ -369,10 +387,41 @@ class Mengao360_Bolao_Admin_Pools {
 
         if (!$preflight['ready'] && empty($preflight['missing_legacy_tables'])) {
             if ($preflight['migrations_allowed'] && empty($preflight['compatibility_issues'])) {
+                $pdo = Mengao360_Bolao_DB::conectar();
+                $legacy_decisions = $pdo
+                    ? Mengao360_Bolao_Schema::get_legacy_state_decisions($pdo)
+                    : [];
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
                 wp_nonce_field('m360_bolao_pool_action');
                 echo '<input type="hidden" name="action" value="m360_bolao_pool_action">';
                 echo '<input type="hidden" name="acao_bolao" value="migrate">';
+                if ($legacy_decisions) {
+                    echo '<p><strong>' . esc_html__(
+                        'Classifique os bolões legados ativos sem data de fechamento:',
+                        'mengao360-bolao'
+                    ) . '</strong></p>';
+                    echo '<table class="widefat striped"><thead><tr><th>ID</th><th>Bolão</th><th>Temporada</th><th>Estado inicial C.1</th></tr></thead><tbody>';
+                    foreach ($legacy_decisions as $pool) {
+                        $pool_id = (int) $pool['bolao_competicao_id'];
+                        echo '<tr><td>' . $pool_id . '</td><td>'
+                            . esc_html($pool['titulo']) . '<br><code>'
+                            . esc_html($pool['slug_bolao']) . '</code></td><td>'
+                            . esc_html($pool['temporada']) . '</td><td>';
+                        echo '<select name="estado_legado[' . $pool_id . ']" required>';
+                        echo '<option value="">' . esc_html__('Selecione', 'mengao360-bolao') . '</option>';
+                        foreach (['ENCERRADO', 'BLOQUEADO', 'ABERTO', 'RASCUNHO'] as $state) {
+                            echo '<option value="' . esc_attr($state) . '">' . esc_html($state) . '</option>';
+                        }
+                        echo '</select></td></tr>';
+                    }
+                    echo '</tbody></table>';
+                }
+                echo '<p><label><input type="checkbox" name="confirmar_estados_legados" value="1" required> '
+                    . esc_html__(
+                        'Confirmo que revisei os estados iniciais dos bolões legados e o backup da janela.',
+                        'mengao360-bolao'
+                    )
+                    . '</label></p>';
                 submit_button(__('Aplicar migração C.1', 'mengao360-bolao'), 'secondary', 'submit', false);
                 echo '</form>';
             } elseif (!empty($preflight['compatibility_issues'])) {

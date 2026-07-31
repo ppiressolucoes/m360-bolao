@@ -177,7 +177,28 @@ class Mengao360_Bolao_Schema {
         ];
     }
 
-    public static function migrate($pdo, $wordpress_user_id) {
+    public static function get_legacy_state_decisions($pdo) {
+        if (!self::table_exists($pdo, 'bolao_competicoes')) {
+            return [];
+        }
+
+        $stmt = $pdo->query(
+            "SELECT bolao_competicao_id,
+                    titulo,
+                    slug_bolao,
+                    temporada,
+                    data_abertura,
+                    data_fechamento
+             FROM bolao_competicoes
+             WHERE ind_ativo = 1
+               AND data_fechamento IS NULL
+             ORDER BY bolao_competicao_id"
+        );
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function migrate($pdo, $wordpress_user_id, $legacy_state_overrides = []) {
         if (!self::migrations_allowed()) {
             throw new RuntimeException(
                 'Migração bloqueada. Defina MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS como true somente durante a janela controlada.'
@@ -204,11 +225,14 @@ class Mengao360_Bolao_Schema {
             }
 
             $migration_was_recorded = !empty($preflight['migration_recorded']);
+            $validated_legacy_states = $migration_was_recorded
+                ? []
+                : self::validate_legacy_state_overrides($pdo, $legacy_state_overrides);
 
             self::create_foundation_tables($pdo);
             self::align_legacy_columns($pdo);
             if (!$migration_was_recorded) {
-                self::normalize_legacy_pool_states($pdo);
+                self::normalize_legacy_pool_states($pdo, $validated_legacy_states);
             }
             self::remove_single_pool_constraint($pdo);
             self::backfill_participants($pdo);
@@ -222,11 +246,20 @@ class Mengao360_Bolao_Schema {
                     checksum = VALUES(checksum),
                     observacao = VALUES(observacao)'
             );
+            $observation = 'Sprint Comercial C.1 — Multi-Competition Foundation';
+            if ($validated_legacy_states) {
+                $state_summary = [];
+                foreach ($validated_legacy_states as $pool_id => $state) {
+                    $state_summary[] = (int) $pool_id . '=' . $state;
+                }
+                $observation .= ' | legado: ' . implode(', ', $state_summary);
+            }
+
             $stmt->execute([
                 self::TARGET_VERSION,
                 (int) $wordpress_user_id,
                 hash('sha256', self::TARGET_VERSION),
-                'Sprint Comercial C.1 — Multi-Competition Foundation',
+                substr($observation, 0, 255),
             ]);
 
             $postflight = self::preflight($pdo);
@@ -362,7 +395,30 @@ class Mengao360_Bolao_Schema {
         }
     }
 
-    private static function normalize_legacy_pool_states($pdo) {
+    private static function validate_legacy_state_overrides($pdo, $legacy_state_overrides) {
+        $allowed_states = ['RASCUNHO', 'ABERTO', 'BLOQUEADO', 'ENCERRADO'];
+        $decisions = self::get_legacy_state_decisions($pdo);
+        $validated = [];
+
+        foreach ($decisions as $pool) {
+            $pool_id = (int) $pool['bolao_competicao_id'];
+            $state = isset($legacy_state_overrides[$pool_id])
+                ? strtoupper(trim((string) $legacy_state_overrides[$pool_id]))
+                : '';
+
+            if (!in_array($state, $allowed_states, true)) {
+                throw new RuntimeException(
+                    'Defina explicitamente o estado inicial do bolão legado #' . $pool_id . ' antes de migrar.'
+                );
+            }
+
+            $validated[$pool_id] = $state;
+        }
+
+        return $validated;
+    }
+
+    private static function normalize_legacy_pool_states($pdo, $legacy_state_overrides) {
         $pdo->exec(
             "UPDATE bolao_competicoes
              SET estado_operacional = CASE
@@ -371,7 +427,7 @@ class Mengao360_Bolao_Schema {
                      AND data_fechamento <= NOW() THEN 'ENCERRADO'
                     WHEN data_abertura IS NULL
                       OR data_abertura > NOW() THEN 'RASCUNHO'
-                    ELSE 'ABERTO'
+                    ELSE 'BLOQUEADO'
                  END,
                  visibilidade = CASE
                     WHEN ind_publico = 1 THEN 'PUBLICO'
@@ -389,6 +445,17 @@ class Mengao360_Bolao_Schema {
                     ELSE NULL
                  END"
         );
+
+        $stmt = $pdo->prepare(
+            'UPDATE bolao_competicoes
+             SET estado_operacional = ?
+             WHERE bolao_competicao_id = ?
+               AND ind_ativo = 1
+               AND data_fechamento IS NULL'
+        );
+        foreach ($legacy_state_overrides as $pool_id => $state) {
+            $stmt->execute([$state, (int) $pool_id]);
+        }
     }
 
     private static function remove_single_pool_constraint($pdo) {

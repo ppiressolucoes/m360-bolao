@@ -51,7 +51,9 @@ commits posteriores à tag.
 
 O plugin não migra o schema durante a ativação. A migração C.1 é idempotente,
 bloqueada por padrão e só pode ser iniciada por administrador durante uma
-janela controlada.
+janela controlada. Bolões legados ativos sem data de fechamento exigem
+classificação explícita do estado inicial C.1 antes da execução; a migração
+não os converte automaticamente para `ABERTO`.
 
 Na ausência de staging, o menu **Mega Bolão 360 → Pré-homologação** permite
 instalar o candidato em produção com a migração bloqueada e executar um

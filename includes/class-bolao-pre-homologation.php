@@ -172,6 +172,16 @@ class Mengao360_Bolao_Pre_Homologation {
             $critical++;
         }
 
+        $legacy_state_decisions = Mengao360_Bolao_Schema::get_legacy_state_decisions($pdo);
+        $checks[] = [
+            'group' => 'Ciclo de vida legado',
+            'item' => 'Estado inicial C.1',
+            'status' => $legacy_state_decisions ? 'REVISÃO' : 'OK',
+            'detail' => $legacy_state_decisions
+                ? count($legacy_state_decisions) . ' bolão(ões) ativo(s) sem data de fechamento exigirá(ão) classificação explícita na migração.'
+                : 'Nenhuma classificação manual pendente.',
+        ];
+
         $counts = [];
         foreach ([
             'bolao_competicoes',
@@ -449,6 +459,7 @@ class Mengao360_Bolao_Pre_Homologation {
         echo '<ol>';
         echo '<li>Registrar capturas desta página e exportar o backup integral.</li>';
         echo '<li>Validar as páginas PT-BR e EN-US do bolão encerrado.</li>';
+        echo '<li>Na janela de migração, classificar explicitamente o bolão legado da Copa como <code>ENCERRADO</code>.</li>';
         echo '<li>Manter a constante de migração ausente ou definida como false.</li>';
         echo '<li>Somente depois preparar a janela controlada da migração C.1.</li>';
         echo '</ol>';

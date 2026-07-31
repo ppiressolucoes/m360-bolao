@@ -41,11 +41,14 @@ oficial, justificativa e expiração. Ele grava
    ```
 
 4. acessar **Mega Bolão 360 → Gerenciar Bolões**;
-5. executar o preflight e aplicar a migração C.1;
-6. remover ou definir a constante como `false`;
-7. validar o bolão legado da Copa;
-8. criar um bolão de homologação como rascunho;
-9. publicar somente depois dos testes de isolamento e bloqueio.
+5. executar o preflight;
+6. classificar explicitamente cada bolão legado ativo sem data de fechamento;
+7. para o protótipo da Copa do Mundo FIFA 2026, selecionar `ENCERRADO`;
+8. confirmar o backup e aplicar a migração C.1;
+9. remover ou definir a constante como `false`;
+10. validar o bolão legado da Copa;
+11. criar um bolão de homologação como rascunho;
+12. publicar somente depois dos testes de isolamento e bloqueio.
 
 ## Pré-homologação controlada em produção
 
@@ -88,7 +91,10 @@ A migração:
 - cria as tabelas da fundação;
 - converte o vínculo de competição para `BIGINT UNSIGNED`;
 - converte temporada para `VARCHAR(20)`;
-- preserva bolões ativos preexistentes como `ABERTO`;
+- exige decisão administrativa explícita para bolões ativos sem data de
+  fechamento e falha fechado se essa decisão estiver ausente;
+- usa `BLOQUEADO` como fallback conservador, sem reabrir palpites
+  automaticamente;
 - faz backfill de participantes a partir de palpites, ligas e rankings;
 - remove a restrição que impedia bolões paralelos da mesma
   competição/temporada;

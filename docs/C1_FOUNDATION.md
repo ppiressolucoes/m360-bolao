@@ -9,6 +9,8 @@ real. Todo o runtime pertence exclusivamente ao plugin Mega Bolão 360.
 - título e descrição pública resolvidos pelo bolão selecionado, preservando o
   conteúdo bilíngue legado da Copa;
 - rascunhos visíveis somente para administradores em preview;
+- identificação consistente na tela de plugins como `M360 - Mega Bolão 360`,
+  com cabeçalho e runtime alinhados na versão `0.1.5`;
 - fallback por slug de competição somente quando o resultado é inequívoco;
 - isolamento de palpites, rankings, dashboard e ligas por
   `bolao_competicao_id`;

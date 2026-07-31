@@ -1069,6 +1069,22 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
                                         <?php else: ?>
                                             <strong><?php echo esc_html($m360_inline('Você não registrou palpite para este jogo.', 'You did not save a prediction for this match.', 'No guardaste un pronóstico para este partido.')); ?></strong>
                                         <?php endif; ?>
+                                    <?php elseif (!$bolao_aberto): ?>
+                                        <?php if ($bolao_estado_operacional === 'RASCUNHO'): ?>
+                                            <strong><?php echo esc_html($m360_inline('Bolão em preparação', 'Pool in preparation', 'Quiniela en preparación')); ?></strong>
+                                            <small><?php echo esc_html($m360_inline(
+                                                'Este jogo é futuro. Os palpites serão liberados somente após a abertura oficial do bolão.',
+                                                'This is a future match. Predictions will open only after the pool is officially opened.',
+                                                'Este es un partido futuro. Los pronósticos se habilitarán únicamente después de la apertura oficial de la quiniela.'
+                                            )); ?></small>
+                                        <?php else: ?>
+                                            <strong><?php echo esc_html($m360_inline('Palpites indisponíveis', 'Predictions unavailable', 'Pronósticos no disponibles')); ?></strong>
+                                            <small><?php echo esc_html($m360_inline(
+                                                'O estado atual do bolão não permite novos palpites.',
+                                                'The current pool status does not allow new predictions.',
+                                                'El estado actual de la quiniela no permite nuevos pronósticos.'
+                                            )); ?></small>
+                                        <?php endif; ?>
                                     <?php elseif ($palpite_salvo): ?>
                                         <strong>
                                             <?php echo esc_html($m360_inline('Seu palpite:', 'Your prediction:', 'Tu pronóstico:')); ?> <?php echo esc_html($palpite_salvo->placar_mandante); ?>

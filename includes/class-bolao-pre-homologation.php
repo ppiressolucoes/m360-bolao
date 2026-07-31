@@ -222,7 +222,9 @@ class Mengao360_Bolao_Pre_Homologation {
             'migration_enabled' => $migration_enabled,
             'php_version' => PHP_VERSION,
             'wordpress_version' => get_bloginfo('version'),
-            'plugin_header_version' => '0.1.0',
+            'plugin_header_version' => defined('MENGAO360_BOLAO_PLUGIN_VERSION')
+                ? MENGAO360_BOLAO_PLUGIN_VERSION
+                : 'indisponível',
             'plugin_asset_version' => defined('MENGAO360_BOLAO_VERSION')
                 ? MENGAO360_BOLAO_VERSION
                 : 'indisponível',
@@ -362,7 +364,7 @@ class Mengao360_Bolao_Pre_Homologation {
         self::runtime_row('PHP', $report['php_version']);
         self::runtime_row('MariaDB/MySQL', $report['database_version']);
         self::runtime_row('Cabeçalho do plugin', $report['plugin_header_version']);
-        self::runtime_row('Constante/assets', $report['plugin_asset_version']);
+        self::runtime_row('Versão do runtime/assets', $report['plugin_asset_version']);
         self::runtime_row('Build de pré-homologação', $report['plugin_build']);
         self::runtime_row('Cache-buster dos assets', $report['asset_version']);
         echo '</tbody></table>';

@@ -276,6 +276,8 @@ class Mengao360_Bolao_Admin_Pools {
             ['estado_operacional' => $current['estado_operacional']],
             ['estado_operacional' => $target]
         );
+
+        self::invalidate_public_cache($pool_id, 'estado_operacional', $target);
     }
 
     private static function update_visibility($pdo) {
@@ -325,6 +327,27 @@ class Mengao360_Bolao_Admin_Pools {
             ['visibilidade' => $current['visibilidade']],
             ['visibilidade' => $visibility]
         );
+
+        self::invalidate_public_cache($pool_id, 'visibilidade', $visibility);
+    }
+
+    /**
+     * Invalida respostas públicas que dependem do estado operacional do bolão.
+     *
+     * Páginas anônimas podem ter sido armazenadas enquanto o bolão estava
+     * restrito. O hook oficial do LiteSpeed evita que essa resposta continue
+     * sendo servida depois da abertura ou publicação. O hook próprio permite
+     * integrar outros provedores de cache sem acoplar o domínio a eles.
+     */
+    private static function invalidate_public_cache($pool_id, $field, $value) {
+        do_action(
+            'm360_bolao_public_state_changed',
+            (int) $pool_id,
+            (string) $field,
+            (string) $value
+        );
+
+        do_action('litespeed_purge_all');
     }
 
     private static function get_pools($pdo) {

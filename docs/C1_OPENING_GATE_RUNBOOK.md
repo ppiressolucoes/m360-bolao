@@ -35,6 +35,11 @@ para visitantes** e alterar a visibilidade para `PUBLICO`. A qualquer momento,
 **Restringir a administradores** retira novamente a exposição pública sem
 alterar fatos esportivos do DW.
 
+A transição de estado ou visibilidade invalida automaticamente o cache público
+do LiteSpeed. Se uma página anônima ainda apresentar o estado anterior, executar
+**LiteSpeed Cache > Toolbox > Purge > Purge All** e repetir o teste em janela
+anônima nos dois idiomas.
+
 ## Rollback operacional
 
 - Para interromper palpites: alterar o estado para `BLOQUEADO`.

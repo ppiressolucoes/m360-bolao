@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 define('MENGAO360_BOLAO_VERSION', '0.1.4');
-define('MENGAO360_BOLAO_BUILD', 'commercial-c1-pre-homologation.4');
+define('MENGAO360_BOLAO_BUILD', 'commercial-c1-pre-homologation.5');
 define(
     'MENGAO360_BOLAO_ASSET_VERSION',
     MENGAO360_BOLAO_VERSION . '-' . MENGAO360_BOLAO_BUILD

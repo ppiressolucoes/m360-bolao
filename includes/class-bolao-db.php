@@ -21,7 +21,7 @@ class Mengao360_Bolao_DB {
     /**
      * Busca todas as datas com jogos da competição.
      */
-    public static function get_datas_jogos($competicao_slug) {
+    public static function get_datas_jogos($competicao_slug, $bolao_competicao_id = 0) {
         $pdo = self::conectar();
 
         if (!$pdo) {
@@ -34,12 +34,19 @@ class Mengao360_Bolao_DB {
                 FROM fato_jogos fj
                 INNER JOIN dim_competicoes dc
                     ON dc.id = fj.competicao_id
+                LEFT JOIN bolao_competicoes bc
+                    ON bc.competicao_id = dc.id
                 WHERE dc.slug = ?
+                  AND (? = 0 OR bc.bolao_competicao_id = ?)
                 ORDER BY DATE(fj.data_jogo)
             ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$competicao_slug]);
+            $stmt->execute([
+                $competicao_slug,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
+            ]);
 
             return $stmt->fetchAll();
 

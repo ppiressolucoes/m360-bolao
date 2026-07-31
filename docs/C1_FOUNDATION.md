@@ -6,6 +6,9 @@ real. Todo o runtime pertence exclusivamente ao plugin Mega Bolão 360.
 ## Componentes implementados
 
 - resolução explícita de bolão por ID ou `slug_bolao`;
+- título e descrição pública resolvidos pelo bolão selecionado, preservando o
+  conteúdo bilíngue legado da Copa;
+- rascunhos visíveis somente para administradores em preview;
 - fallback por slug de competição somente quando o resultado é inequívoco;
 - isolamento de palpites, rankings, dashboard e ligas por
   `bolao_competicao_id`;
@@ -108,16 +111,18 @@ A migração:
 
 1. O shortcode com `bolao` inexistente falha fechado.
 2. O fallback por competição falha quando há dois bolões ativos.
-3. Palpites de dois bolões da mesma competição não se misturam.
-4. Ranking, dashboard e ligas permanecem isolados.
-5. Jogo com time nulo, placeholder `9999` ou times iguais é bloqueado.
-6. Jogo iniciado, encerrado, suspenso, cancelado ou adiado é bloqueado.
-7. A janela configurada é respeitada no front-end e no AJAX.
-8. Bolão fora de `ABERTO` não aceita palpite, criação ou entrada em liga.
+3. Visitante não consegue renderizar um bolão em `RASCUNHO`; administrador
+   consegue validá-lo em preview.
+4. Palpites de dois bolões da mesma competição não se misturam.
+5. Ranking, dashboard e ligas permanecem isolados.
+6. Jogo com time nulo, placeholder `9999` ou times iguais é bloqueado.
+7. Jogo iniciado, encerrado, suspenso, cancelado ou adiado é bloqueado.
+8. A janela configurada é respeitada no front-end e no AJAX.
+9. Bolão fora de `ABERTO` não aceita palpite, criação ou entrada em liga.
    A página pública substitui chamadas de participação por um estado somente
    leitura, mantendo resultados, ranking e ligas históricas disponíveis.
-9. Override manual expira e deixa de ser publicado.
-10. Nenhuma ação do WordPress altera `dim_*` ou `fato_*`.
+10. Override manual expira e deixa de ser publicado.
+11. Nenhuma ação do WordPress altera `dim_*` ou `fato_*`.
 
 ## Shortcode
 

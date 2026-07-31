@@ -26,6 +26,9 @@ class Mengao360_Bolao_Shortcodes {
         $minutos_bloqueio_palpite = 10;
         $bolao_aberto = false;
         $bolao_estado_operacional = 'RASCUNHO';
+        $bolao_titulo_publico = '';
+        $bolao_descricao_publica = '';
+        $bolao_usar_conteudo_legado_wc = false;
         $usuario_logado = is_user_logged_in();
         $usuario_atual = wp_get_current_user();
 
@@ -141,11 +144,42 @@ class Mengao360_Bolao_Shortcodes {
             $minutos_bloqueio_palpite = (int) $contexto_bolao->janela_fechamento_minutos;
             $bolao_estado_operacional = strtoupper((string) $contexto_bolao->estado_operacional);
             $bolao_aberto = $bolao_estado_operacional === 'ABERTO';
+            $bolao_usar_conteudo_legado_wc = $bolao_slug === 'bolao-copa-do-mundo-fifa-2026';
+
+            if ($bolao_estado_operacional === 'RASCUNHO' && !current_user_can('manage_options')) {
+                return '<div class="m360-bolao-aviso">' .
+                    esc_html($context_text['not_found']) .
+                    '</div>';
+            }
+
+            $competition_label = trim((string) $contexto_bolao->competicao_nome);
+            $season_label = trim((string) $contexto_bolao->temporada);
+            if ($idioma_bolao === 'en-US' && !$bolao_usar_conteudo_legado_wc) {
+                $bolao_titulo_publico = trim($competition_label . ' Pool ' . $season_label);
+                $bolao_descricao_publica = sprintf(
+                    'Official Mengão 360 pool for %s %s.',
+                    $competition_label,
+                    $season_label
+                );
+            } elseif ($idioma_bolao === 'es-ES' && !$bolao_usar_conteudo_legado_wc) {
+                $bolao_titulo_publico = trim('Quiniela ' . $competition_label . ' ' . $season_label);
+                $bolao_descricao_publica = sprintf(
+                    'Quiniela oficial de Mengão 360 para %s %s.',
+                    $competition_label,
+                    $season_label
+                );
+            } else {
+                $bolao_titulo_publico = trim((string) $contexto_bolao->titulo);
+                $bolao_descricao_publica = trim((string) $contexto_bolao->descricao);
+            }
 
             // ------------------------------------------------------------
             // 3.1. Carrega todas as datas com jogos da competição
             // ------------------------------------------------------------
-            $datas_jogos = Mengao360_Bolao_DB::get_datas_jogos($competicao_slug);
+            $datas_jogos = Mengao360_Bolao_DB::get_datas_jogos(
+                $competicao_slug,
+                $bolao_competicao_id
+            );
 
             $data_selecionada = isset($_GET['data_jogo'])
                 ? sanitize_text_field($_GET['data_jogo'])

@@ -472,7 +472,13 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
     <section class="m360-bolao-hero">
         <div>
             <span class="m360-bolao-tag"><?php echo $m360_txt_esc('LABEL', 'meu_bolao_360', 'Meu Bolão 360', 'BOLAO'); ?></span>
-            <h1><?php echo $m360_txt_esc('LABEL', 'titulo_bolao_wc26', 'Bolão Copa do Mundo FIFA 2026', 'BOLAO'); ?></h1>
+            <h1>
+                <?php if (!empty($bolao_usar_conteudo_legado_wc)): ?>
+                    <?php echo $m360_txt_esc('LABEL', 'titulo_bolao_wc26', 'Bolão Copa do Mundo FIFA 2026', 'BOLAO'); ?>
+                <?php else: ?>
+                    <?php echo esc_html($bolao_titulo_publico); ?>
+                <?php endif; ?>
+            </h1>
             <p>
                 <?php if ($m360_bolao_encerrado): ?>
                     <?php echo esc_html($m360_inline(
@@ -481,7 +487,11 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
                         'Quiniela finalizada. Consulta los resultados, pronósticos calculados y la clasificación final.'
                     )); ?>
                 <?php else: ?>
-                    <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                    <?php if (!empty($bolao_usar_conteudo_legado_wc)): ?>
+                        <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                    <?php else: ?>
+                        <?php echo esc_html($bolao_descricao_publica); ?>
+                    <?php endif; ?>
                 <?php endif; ?>
             </p>
         </div>

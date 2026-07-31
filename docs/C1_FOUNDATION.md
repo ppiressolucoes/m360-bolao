@@ -74,6 +74,10 @@ O resultado esperado antes do backup é
 `PRONTO PARA PRÉ-HOMOLOGAÇÃO`. A constante
 `MENGAO360_BOLAO_ALLOW_SCHEMA_MIGRATIONS` deve permanecer ausente ou `false`.
 
+Depois da migração registrada, o diagnóstico muda para
+`PRONTO PARA PÓS-HOMOLOGAÇÃO`, deixa de solicitar a classificação do legado e
+passa a orientar a comparação das contagens e a validação pública PT-BR/EN-US.
+
 O widget público continua resolvendo o idioma nesta ordem:
 
 1. atributo `idioma` do shortcode;

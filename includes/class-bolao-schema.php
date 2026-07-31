@@ -182,6 +182,10 @@ class Mengao360_Bolao_Schema {
             return [];
         }
 
+        if (self::migration_recorded($pdo)) {
+            return [];
+        }
+
         $stmt = $pdo->query(
             "SELECT bolao_competicao_id,
                     titulo,

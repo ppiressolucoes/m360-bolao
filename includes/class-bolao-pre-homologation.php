@@ -91,6 +91,7 @@ class Mengao360_Bolao_Pre_Homologation {
         ];
         $checks = [];
         $critical = 0;
+        $schema_preflight = Mengao360_Bolao_Schema::preflight($pdo);
 
         foreach ($required_tables as $table) {
             $exists = Mengao360_Bolao_Schema::table_exists($pdo, $table);
@@ -112,7 +113,9 @@ class Mengao360_Bolao_Pre_Homologation {
                 'item' => $table,
                 'status' => $exists ? 'OK' : 'PENDENTE',
                 'detail' => $exists
-                    ? 'Já existe; a migração deverá validar sua estrutura.'
+                    ? ($schema_preflight['ready']
+                        ? 'Estrutura disponível e migração C.1 registrada.'
+                        : 'Já existe; a migração deverá validar sua estrutura.')
                     : 'Será criada pela migração controlada.',
             ];
         }
@@ -198,11 +201,20 @@ class Mengao360_Bolao_Pre_Homologation {
             }
         }
 
+        $gate = 'BLOQUEADO';
+        $gate_message = 'Existem verificações críticas que precisam ser resolvidas antes da instalação controlada.';
+        if ($critical === 0 && $schema_preflight['ready']) {
+            $gate = 'PRONTO PARA PÓS-HOMOLOGAÇÃO';
+            $gate_message = 'A migração C.1 está registrada, o schema está pronto e novas migrações permanecem bloqueadas.';
+        } elseif ($critical === 0) {
+            $gate = 'PRONTO PARA PRÉ-HOMOLOGAÇÃO';
+            $gate_message = 'O plugin pode ser instalado para observação. A migração permanece bloqueada.';
+        }
+
         return [
-            'gate' => $critical === 0 ? 'PRONTO PARA PRÉ-HOMOLOGAÇÃO' : 'BLOQUEADO',
-            'gate_message' => $critical === 0
-                ? 'O plugin pode ser instalado para observação. A migração permanece bloqueada.'
-                : 'Existem verificações críticas que precisam ser resolvidas antes da instalação controlada.',
+            'gate' => $gate,
+            'gate_message' => $gate_message,
+            'schema_ready' => $schema_preflight['ready'],
             'checks' => $checks,
             'counts' => $counts,
             'pools' => self::get_pools($pdo),
@@ -334,7 +346,7 @@ class Mengao360_Bolao_Pre_Homologation {
     }
 
     private static function render_gate($gate, $message) {
-        $success = $gate === 'PRONTO PARA PRÉ-HOMOLOGAÇÃO';
+        $success = strpos($gate, 'PRONTO PARA ') === 0;
         $class = $success ? 'notice-success' : 'notice-error';
         echo '<div class="notice ' . esc_attr($class) . '"><p><strong>'
             . esc_html($gate)
@@ -448,11 +460,22 @@ class Mengao360_Bolao_Pre_Homologation {
 
     private static function render_next_step($report) {
         echo '<h2>' . esc_html__('Próximo gate', 'mengao360-bolao') . '</h2>';
-        if ($report['gate'] !== 'PRONTO PARA PRÉ-HOMOLOGAÇÃO') {
+        if ($report['gate'] === 'BLOQUEADO') {
             echo '<p>' . esc_html__(
                 'Não habilite a migração. Corrija os itens BLOQUEADO e execute novamente este diagnóstico.',
                 'mengao360-bolao'
             ) . '</p>';
+            return;
+        }
+
+        if (!empty($report['schema_ready'])) {
+            echo '<ol>';
+            echo '<li>Manter a constante de migração ausente ou definida como <code>false</code>.</li>';
+            echo '<li>Confirmar que as contagens legadas permanecem iguais ao snapshot anterior.</li>';
+            echo '<li>Validar o bolão encerrado nas páginas PT-BR e EN-US, inclusive com usuário desconectado.</li>';
+            echo '<li>Não arquivar o protótipo até concluir a validação visual e funcional.</li>';
+            echo '<li>Somente depois criar o primeiro novo bolão como <code>RASCUNHO</code>.</li>';
+            echo '</ol>';
             return;
         }
 

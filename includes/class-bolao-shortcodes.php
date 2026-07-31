@@ -26,6 +26,7 @@ class Mengao360_Bolao_Shortcodes {
         $minutos_bloqueio_palpite = 10;
         $bolao_aberto = false;
         $bolao_estado_operacional = 'RASCUNHO';
+        $bolao_visibilidade = 'PUBLICO';
         $bolao_titulo_publico = '';
         $bolao_descricao_publica = '';
         $bolao_usar_conteudo_legado_wc = false;
@@ -143,10 +144,13 @@ class Mengao360_Bolao_Shortcodes {
             $competicao_slug = (string) $contexto_bolao->competicao_slug;
             $minutos_bloqueio_palpite = (int) $contexto_bolao->janela_fechamento_minutos;
             $bolao_estado_operacional = strtoupper((string) $contexto_bolao->estado_operacional);
+            $bolao_visibilidade = strtoupper((string) ($contexto_bolao->visibilidade ?? 'PUBLICO'));
             $bolao_aberto = $bolao_estado_operacional === 'ABERTO';
             $bolao_usar_conteudo_legado_wc = $bolao_slug === 'bolao-copa-do-mundo-fifa-2026';
 
-            if ($bolao_estado_operacional === 'RASCUNHO' && !current_user_can('manage_options')) {
+            if (($bolao_estado_operacional === 'RASCUNHO'
+                    || !Mengao360_Bolao_Context::is_visible_to_current_user($contexto_bolao))
+                && !current_user_can('manage_options')) {
                 return '<div class="m360-bolao-aviso">' .
                     esc_html($context_text['not_found']) .
                     '</div>';

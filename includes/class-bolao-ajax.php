@@ -62,6 +62,10 @@ class Mengao360_Bolao_Ajax {
                 'bolao_inativo' => 'Bolão não está ativo para esta competição.',
                 'jogo_nao_localizado' => 'Jogo não localizado para esta competição.',
                 'jogo_fechado' => 'Este jogo não está mais aberto para palpites.',
+                'times_indefinidos' => 'Os dois times ainda não foram definidos pelo DW.',
+                'status_jogo_bloqueado' => 'O jogo já iniciou, terminou ou não está disponível para palpites.',
+                'janela_palpite_encerrada' => 'A janela de palpites deste jogo foi encerrada.',
+                'horario_jogo_invalido' => 'O horário oficial do jogo está indisponível para validação.',
                 'palpite_salvo' => 'Palpite salvo com sucesso!',
                 'erro_salvar_palpite' => 'Erro ao salvar palpite.',
 
@@ -87,6 +91,10 @@ class Mengao360_Bolao_Ajax {
                 'bolao_inativo' => 'The pool is not active for this competition.',
                 'jogo_nao_localizado' => 'Match not found for this competition.',
                 'jogo_fechado' => 'This match is no longer open for predictions.',
+                'times_indefinidos' => 'Both teams have not yet been confirmed by the DW.',
+                'status_jogo_bloqueado' => 'The match has started, finished, or is unavailable for predictions.',
+                'janela_palpite_encerrada' => 'The prediction window for this match has closed.',
+                'horario_jogo_invalido' => 'The official match time is unavailable for validation.',
                 'palpite_salvo' => 'Prediction saved successfully!',
                 'erro_salvar_palpite' => 'Error saving prediction.',
 
@@ -112,6 +120,10 @@ class Mengao360_Bolao_Ajax {
                 'bolao_inativo' => 'El bolão no está activo para esta competición.',
                 'jogo_nao_localizado' => 'Partido no encontrado para esta competición.',
                 'jogo_fechado' => 'Este partido ya no está abierto para pronósticos.',
+                'times_indefinidos' => 'Los dos equipos todavía no han sido confirmados por el DW.',
+                'status_jogo_bloqueado' => 'El partido comenzó, terminó o no está disponible para pronósticos.',
+                'janela_palpite_encerrada' => 'La ventana de pronósticos de este partido se cerró.',
+                'horario_jogo_invalido' => 'El horario oficial del partido no está disponible para validación.',
                 'palpite_salvo' => '¡Pronóstico guardado con éxito!',
                 'erro_salvar_palpite' => 'Error al guardar el pronóstico.',
 
@@ -137,6 +149,17 @@ class Mengao360_Bolao_Ajax {
         }
 
         return $texto;
+    }
+
+    private static function guard_message($code) {
+        $keys = [
+            'TEAMS_UNDEFINED' => 'times_indefinidos',
+            'MATCH_NOT_SCHEDULED' => 'status_jogo_bloqueado',
+            'PREDICTION_WINDOW_CLOSED' => 'janela_palpite_encerrada',
+            'INVALID_MATCH_TIME' => 'horario_jogo_invalido',
+        ];
+
+        return self::t($keys[$code] ?? 'jogo_fechado');
     }
 
     /**
@@ -200,32 +223,49 @@ class Mengao360_Bolao_Ajax {
         }
 
         try {
-            // ------------------------------------------------------------
-            // Resolve o bolão explicitamente. O slug da competição não é
-            // suficiente quando existem temporadas ou bolões paralelos.
-            // ------------------------------------------------------------
-            $contexto = Mengao360_Bolao_Context::resolve(
-                $pdo,
-                '',
-                $competicao_slug,
-                $bolao_competicao_id
-            );
+            $reject = static function ($message) use ($pdo) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                wp_send_json_error(['mensagem' => $message]);
+            };
 
-            if (is_wp_error($contexto) || strtoupper((string) $contexto->estado_operacional) !== 'ABERTO') {
-                wp_send_json_error(['mensagem' => self::t('bolao_inativo')]);
+            // O estado do bolão, o jogo e a gravação ficam na mesma transação.
+            // Isso fecha a janela de corrida com bloqueios administrativos ou
+            // atualizações do ETL que ocorram durante o envio do palpite.
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare(
+                'SELECT bc.competicao_id, bc.estado_operacional, bc.visibilidade,
+                        bc.janela_fechamento_minutos, dc.slug AS competicao_slug
+                 FROM bolao_competicoes bc
+                 INNER JOIN dim_competicoes dc ON dc.id = bc.competicao_id
+                 WHERE bc.bolao_competicao_id = ?
+                   AND bc.ind_ativo = 1
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $stmt->execute([$bolao_competicao_id]);
+            $contexto = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$contexto
+                || strtoupper((string) $contexto->estado_operacional) !== 'ABERTO'
+                || (string) $contexto->competicao_slug !== $competicao_slug
+                || !Mengao360_Bolao_Context::is_visible_to_current_user($contexto)) {
+                $reject(self::t('bolao_inativo'));
             }
 
             $stmt = $pdo->prepare("
                 SELECT status_palpite_id
                 FROM bolao_status_palpite
                 WHERE codigo = 'ABERTO'
+                  AND ind_ativo = 1
                 LIMIT 1
             ");
             $stmt->execute();
             $status_palpite_id = (int) $stmt->fetchColumn();
 
             if ($status_palpite_id <= 0) {
-                wp_send_json_error(['mensagem' => self::t('bolao_inativo')]);
+                $reject(self::t('bolao_inativo'));
             }
 
             // ------------------------------------------------------------
@@ -241,19 +281,15 @@ class Mengao360_Bolao_Ajax {
                     visitante_id
                 FROM fato_jogos
                 WHERE id = ?
-                  AND competicao_id = (
-                      SELECT competicao_id
-                      FROM bolao_competicoes
-                      WHERE bolao_competicao_id = ?
-                      LIMIT 1
-                  )
+                  AND competicao_id = ?
                 LIMIT 1
+                FOR UPDATE
             ");
-            $stmt->execute([$jogo_id, $bolao_competicao_id]);
+            $stmt->execute([$jogo_id, (int) $contexto->competicao_id]);
             $jogo = $stmt->fetch();
 
             if (!$jogo) {
-                wp_send_json_error(['mensagem' => self::t('jogo_nao_localizado')]);
+                $reject(self::t('jogo_nao_localizado'));
             }
 
             $guard = Mengao360_Bolao_Game_Guard::evaluate(
@@ -262,7 +298,7 @@ class Mengao360_Bolao_Ajax {
             );
 
             if (empty($guard['allowed'])) {
-                wp_send_json_error(['mensagem' => $guard['message'] ?: self::t('jogo_fechado')]);
+                $reject(self::guard_message($guard['code'] ?? ''));
             }
 
             Mengao360_Bolao_Context::ensure_participant(
@@ -303,11 +339,16 @@ class Mengao360_Bolao_Ajax {
                 $placar_visitante
             ]);
 
+            $pdo->commit();
+
             wp_send_json_success([
                 'mensagem' => self::t('palpite_salvo')
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log('Meu Bolão 360 - erro salvar palpite: ' . $e->getMessage());
             wp_send_json_error(['mensagem' => self::t('erro_salvar_palpite')]);
         }
@@ -364,12 +405,14 @@ class Mengao360_Bolao_Ajax {
             ]);
         }
 
+        $invite_base = wp_validate_redirect(wp_get_referer(), home_url('/'));
+        $invite_base = remove_query_arg(['codigo_liga', 'lang'], $invite_base);
         $link_convite = add_query_arg(
             [
                 'codigo_liga' => $resultado['codigo_convite'],
                 'lang' => self::get_lang(),
             ],
-            site_url('/bolao-copa-do-mundo-fifa-2026/')
+            $invite_base
         );
 
         wp_send_json_success([

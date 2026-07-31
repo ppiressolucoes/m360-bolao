@@ -464,6 +464,7 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
      data-bolao-id="<?php echo esc_attr($bolao_competicao_id); ?>"
      data-bolao="<?php echo esc_attr($bolao_slug); ?>"
      data-competicao="<?php echo esc_attr($competicao_slug); ?>"
+     data-visibilidade="<?php echo esc_attr($bolao_visibilidade ?? 'PUBLICO'); ?>"
      data-lang="<?php echo esc_attr($m360_lang); ?>">
 
     <!-- ============================================================
@@ -496,6 +497,17 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
             </p>
         </div>
     </section>
+
+    <?php if (($bolao_visibilidade ?? 'PUBLICO') === 'ADMIN' && current_user_can('manage_options')): ?>
+        <section class="m360-bolao-card m360-bolao-estado-card">
+            <h2><?php echo esc_html($m360_inline('Homologação restrita', 'Restricted validation', 'Validación restringida')); ?></h2>
+            <p><?php echo esc_html($m360_inline(
+                'Somente administradores podem acessar este bolão. Visitantes continuam bloqueados.',
+                'Only administrators can access this pool. Visitors remain blocked.',
+                'Solo los administradores pueden acceder a esta quiniela. Los visitantes permanecen bloqueados.'
+            )); ?></p>
+        </section>
+    <?php endif; ?>
 
     <?php if (!$bolao_aberto): ?>
         <section class="m360-bolao-card m360-bolao-estado-card">
@@ -772,11 +784,6 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
                         : false;
 
                     $agora_bolao = new DateTimeImmutable('now', $timezone_bolao);
-                    $timestamp_agora_bolao = $agora_bolao->getTimestamp();
-
-                    $palpite_aberto_por_horario = $timestamp_bloqueio
-                        ? $timestamp_agora_bolao < $timestamp_bloqueio
-                        : false;
 
                     // Evita bloqueio antecipado por flag SQL baseada em NOW() de outro fuso.
                     $status_jogo_atual = strtoupper((string) ($jogo->status_jogo ?? ''));
@@ -802,34 +809,15 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
                         'GLOBAL'
                     );
 
-                    $status_abertos = [
-                        'TIMED',
-                        'SCHEDULED',
-                        'NOT_STARTED',
-                        'NS',
-                    ];
-
-                    $palpite_aberto_por_status = in_array(
-                        $status_jogo_atual,
-                        $status_abertos,
-                        true
+                    // A UI usa exatamente a mesma decisão aplicada no AJAX.
+                    $m360_game_guard = Mengao360_Bolao_Game_Guard::evaluate(
+                        $jogo,
+                        $minutos_bloqueio_palpite,
+                        $agora_bolao
                     );
-
-                    // O confronto permanece visível, mas só aceita palpites
-                    // quando os dois times reais estiverem definidos.
-                    $mandante_id_jogo = isset($jogo->mandante_id) ? (int) $jogo->mandante_id : 0;
-                    $visitante_id_jogo = isset($jogo->visitante_id) ? (int) $jogo->visitante_id : 0;
-
-                    $confronto_definido = $mandante_id_jogo > 0
-                        && $visitante_id_jogo > 0
-                        && $mandante_id_jogo !== 9999
-                        && $visitante_id_jogo !== 9999
-                        && $mandante_id_jogo !== $visitante_id_jogo;
-
-                    $palpite_aberto = $confronto_definido
-                        && $bolao_aberto
-                        && $palpite_aberto_por_status
-                        && $palpite_aberto_por_horario;
+                    $confronto_definido = Mengao360_Bolao_Game_Guard::teams_are_defined($jogo);
+                    $palpite_aberto = $bolao_aberto && !empty($m360_game_guard['allowed']);
+                    $m360_game_guard_code = (string) ($m360_game_guard['code'] ?? '');
 
                     $hora_bloqueio_palpite = $timestamp_bloqueio
                         ? wp_date('H:i', $timestamp_bloqueio, $timezone_bolao)
@@ -1094,7 +1082,13 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
                                         <small><?php echo esc_html($m360_inline('Palpites encerrados para este jogo.', 'Predictions are closed for this match.', 'Los pronósticos están cerrados para este partido.')); ?></small>
                                     <?php else: ?>
                                         <strong><?php echo esc_html($m360_inline('Palpites encerrados', 'Predictions closed', 'Pronósticos cerrados')); ?></strong>
-                                        <small><?php echo esc_html($m360_inline('Este jogo já foi iniciado e não aceita novos palpites.', 'This match has already started and no longer accepts new predictions.', 'Este partido ya comenzó y no acepta nuevos pronósticos.')); ?></small>
+                                        <?php if ($m360_game_guard_code === 'PREDICTION_WINDOW_CLOSED'): ?>
+                                            <small><?php echo esc_html($m360_inline('A janela de palpites deste jogo foi encerrada.', 'The prediction window for this match has closed.', 'La ventana de pronósticos de este partido se cerró.')); ?></small>
+                                        <?php elseif ($m360_game_guard_code === 'INVALID_MATCH_TIME'): ?>
+                                            <small><?php echo esc_html($m360_inline('O horário oficial do jogo está indisponível para validação.', 'The official match time is unavailable for validation.', 'El horario oficial del partido no está disponible para validación.')); ?></small>
+                                        <?php else: ?>
+                                            <small><?php echo esc_html($m360_inline('Este jogo já foi iniciado, finalizado ou não está disponível para novos palpites.', 'This match has started, finished, or is unavailable for new predictions.', 'Este partido comenzó, terminó o no está disponible para nuevos pronósticos.')); ?></small>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
 

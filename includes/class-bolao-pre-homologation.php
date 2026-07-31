@@ -251,6 +251,14 @@ class Mengao360_Bolao_Pre_Homologation {
         $state_sql = $has_state
             ? 'bc.estado_operacional'
             : "'LEGADO' AS estado_operacional";
+        $has_visibility = Mengao360_Bolao_Schema::column_exists(
+            $pdo,
+            'bolao_competicoes',
+            'visibilidade'
+        );
+        $visibility_sql = $has_visibility
+            ? 'bc.visibilidade'
+            : "'PUBLICO' AS visibilidade";
 
         $stmt = $pdo->query(
             "SELECT bc.bolao_competicao_id,
@@ -261,6 +269,7 @@ class Mengao360_Bolao_Pre_Homologation {
                     bc.data_abertura,
                     bc.data_fechamento,
                     {$state_sql},
+                    {$visibility_sql},
                     dc.nome AS competicao_nome,
                     bsc.codigo AS status_codigo,
                     bsc.nome AS status_nome
@@ -410,12 +419,12 @@ class Mengao360_Bolao_Pre_Homologation {
     private static function render_pools($pools) {
         echo '<h2>' . esc_html__('Bolões existentes', 'mengao360-bolao') . '</h2>';
         echo '<table class="widefat striped"><thead><tr>';
-        foreach (['ID', 'Bolão', 'Competição', 'Temporada', 'Status legado', 'Estado C.1', 'Ativo', 'Abertura', 'Fechamento'] as $heading) {
+        foreach (['ID', 'Bolão', 'Competição', 'Temporada', 'Status legado', 'Estado C.1', 'Visibilidade', 'Ativo', 'Abertura', 'Fechamento'] as $heading) {
             echo '<th>' . esc_html($heading) . '</th>';
         }
         echo '</tr></thead><tbody>';
         if (!$pools) {
-            echo '<tr><td colspan="9">Nenhum bolão encontrado.</td></tr>';
+            echo '<tr><td colspan="10">Nenhum bolão encontrado.</td></tr>';
         }
         foreach ($pools as $pool) {
             $legacy_status = implode(
@@ -433,6 +442,7 @@ class Mengao360_Bolao_Pre_Homologation {
             echo '<td>' . esc_html($pool['temporada']) . '</td>';
             echo '<td>' . esc_html($legacy_status ?: '—') . '</td>';
             echo '<td>' . esc_html($pool['estado_operacional']) . '</td>';
+            echo '<td>' . esc_html($pool['visibilidade']) . '</td>';
             echo '<td>' . ((int) $pool['ind_ativo'] === 1 ? 'Sim' : 'Não') . '</td>';
             echo '<td>' . esc_html($pool['data_abertura'] ?: '—') . '</td>';
             echo '<td>' . esc_html($pool['data_fechamento'] ?: '—') . '</td>';

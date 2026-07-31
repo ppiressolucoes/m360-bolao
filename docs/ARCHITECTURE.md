@@ -127,6 +127,17 @@ RASCUNHO → ABERTO → BLOQUEADO → EM_APURACAO → ENCERRADO → ARQUIVADO
 Transições administrativas são explícitas, validadas por capability e
 registradas em auditoria. Não existe retorno implícito de `ARQUIVADO`.
 
+A transição para `ABERTO` é protegida por um gate recalculado no servidor. O
+gate exige competição/modelo ativos, calendário futuro, ao menos um confronto
+liberável, janela válida, status de palpite e procedure pós-ETL disponíveis.
+Confrontos futuros ainda sem times são reportados e permanecem bloqueados, sem
+impedir outros jogos válidos da mesma competição.
+
+Na homologação controlada, a visibilidade deve ser `ADMIN`. Nesse modo, o
+estado pode ser `ABERTO` para testar toda a operação com administradores, mas
+visitantes não renderizam o widget nem acessam palpites ou ligas via AJAX. A
+mudança para `PUBLICO` é uma ação posterior, separada e confirmada.
+
 ## Política de palpites
 
 Um palpite só pode ser gravado quando:
@@ -142,6 +153,8 @@ Um palpite só pode ser gravado quando:
 - o horário atual é anterior à janela de bloqueio configurada.
 
 O endpoint AJAX é a autoridade final. Estados visuais não concedem permissão.
+A validação final e a gravação ocorrem na mesma transação, com bloqueio do
+bolão e do jogo consultados, reduzindo corridas com mudanças de estado e ETL.
 
 ## Sincronização pós-ETL
 

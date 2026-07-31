@@ -10,7 +10,7 @@ real. Todo o runtime pertence exclusivamente ao plugin Mega Bolão 360.
   conteúdo bilíngue legado da Copa;
 - rascunhos visíveis somente para administradores em preview;
 - identificação consistente na tela de plugins como `M360 - Mega Bolão 360`,
-  com cabeçalho e runtime alinhados na versão `0.1.5`;
+  com cabeçalho e runtime alinhados na versão `0.1.6`;
 - fallback por slug de competição somente quando o resultado é inequívoco;
 - isolamento de palpites, rankings, dashboard e ligas por
   `bolao_competicao_id`;
@@ -21,6 +21,12 @@ real. Todo o runtime pertence exclusivamente ao plugin Mega Bolão 360.
 - criação administrativa de bolões como rascunho;
 - janela de fechamento configurável por bolão;
 - guard único de palpites no servidor;
+- gate de abertura controlada, recalculado no servidor antes da transição para
+  `ABERTO`, com calendário, modelo, confrontos, janela e pós-ETL;
+- visibilidade `ADMIN` para abrir e homologar em produção sem exposição a
+  visitantes, seguida de publicação `PUBLICO` em ação separada e confirmada;
+- transação com bloqueio de linhas ao validar e gravar o palpite, evitando
+  corrida com alterações administrativas ou atualizações do ETL;
 - participantes isolados por bolão;
 - overrides temporários e auditáveis para atraso da API;
 - trilha de migrações, auditoria e sincronizações.
@@ -121,9 +127,16 @@ A migração:
 7. Jogo iniciado, encerrado, suspenso, cancelado ou adiado é bloqueado.
 8. A janela configurada é respeitada no front-end e no AJAX.
 9. Bolão fora de `ABERTO` não aceita palpite, criação ou entrada em liga.
-   A página pública substitui chamadas de participação por um estado somente
-   leitura, mantendo resultados, ranking e ligas históricas disponíveis.
-10. Override manual expira e deixa de ser publicado.
+10. Transição para `ABERTO` exige confirmação explícita e todos os itens
+    bloqueantes do gate em estado `OK`.
+11. Confrontos sem os dois times definidos permanecem visíveis e bloqueados;
+    eles não impedem a abertura quando existem outros jogos liberáveis.
+12. Respostas do guard no AJAX preservam PT-BR, EN-US e ES-ES.
+13. Página pública encerrada substitui chamadas de participação por um estado
+    somente leitura, mantendo resultados, ranking e ligas históricas.
+14. Override manual expira e deixa de ser publicado.
+15. Bolão com visibilidade `ADMIN` não renderiza para visitantes nem aceita
+    palpites ou ações de liga por chamadas diretas.
 11. Nenhuma ação do WordPress altera `dim_*` ou `fato_*`.
 
 ## Shortcode

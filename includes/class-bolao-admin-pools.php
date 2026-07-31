@@ -55,7 +55,7 @@ class Mengao360_Bolao_Admin_Pools {
         $credit_rules = self::get_lookup($pdo, 'bolao_regras_creditos', 'regra_credito_id');
         $statuses = self::get_lookup($pdo, 'bolao_status_competicao', 'status_competicao_id');
 
-        self::render_pool_list($pools);
+        self::render_pool_list($pdo, $pools);
         self::render_create_form($competitions, $scoring_rules, $credit_rules, $statuses);
         echo '</div>';
     }
@@ -106,6 +106,11 @@ class Mengao360_Bolao_Admin_Pools {
             if ($action === 'create') {
                 self::create_pool($pdo);
                 self::redirect('success', 'Bolão criado como rascunho.');
+            }
+
+            if ($action === 'visibility') {
+                self::update_visibility($pdo);
+                self::redirect('success', 'Visibilidade do bolão atualizada.');
             }
 
             if ($action === 'transition') {
@@ -230,8 +235,22 @@ class Mengao360_Bolao_Admin_Pools {
             throw new RuntimeException('Transição de estado não permitida.');
         }
 
+        if ($target === 'ABERTO') {
+            $confirmed = isset($_POST['confirmar_abertura_controlada'])
+                && (string) wp_unslash($_POST['confirmar_abertura_controlada']) === '1';
+            if (!$confirmed) {
+                throw new RuntimeException('Confirme a abertura controlada após revisar o gate operacional.');
+            }
+
+            $opening_gate = Mengao360_Bolao_Opening_Gate::evaluate($pdo, $pool_id);
+            if (empty($opening_gate['ready'])) {
+                $blocking = Mengao360_Bolao_Opening_Gate::blocking_messages($opening_gate);
+                throw new RuntimeException('Abertura bloqueada. ' . implode(' | ', $blocking));
+            }
+        }
+
         $published_sql = $target === 'ABERTO'
-            ? ', dth_publicacao = COALESCE(dth_publicacao, NOW())'
+            ? ', data_abertura = COALESCE(data_abertura, NOW()), dth_publicacao = COALESCE(dth_publicacao, NOW())'
             : '';
         $archived_sql = $target === 'ARQUIVADO'
             ? ', dth_arquivamento = NOW(), ind_ativo = 0'
@@ -259,6 +278,55 @@ class Mengao360_Bolao_Admin_Pools {
         );
     }
 
+    private static function update_visibility($pdo) {
+        $pool_id = isset($_POST['bolao_competicao_id']) ? absint($_POST['bolao_competicao_id']) : 0;
+        $visibility = isset($_POST['visibilidade'])
+            ? strtoupper(sanitize_key(wp_unslash($_POST['visibilidade'])))
+            : '';
+
+        if (!in_array($visibility, ['ADMIN', 'PUBLICO'], true)) {
+            throw new RuntimeException('Visibilidade inválida.');
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT estado_operacional, visibilidade
+             FROM bolao_competicoes
+             WHERE bolao_competicao_id = ? AND ind_ativo = 1
+             LIMIT 1'
+        );
+        $stmt->execute([$pool_id]);
+        $current = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$current) {
+            throw new RuntimeException('Bolão não localizado ou inativo.');
+        }
+
+        if ($visibility === 'PUBLICO') {
+            $confirmed = isset($_POST['confirmar_publicacao'])
+                && (string) wp_unslash($_POST['confirmar_publicacao']) === '1';
+            if ($current['estado_operacional'] !== 'ABERTO' || !$confirmed) {
+                throw new RuntimeException('A publicação exige bolão ABERTO e confirmação explícita.');
+            }
+        }
+
+        $stmt = $pdo->prepare(
+            'UPDATE bolao_competicoes
+             SET visibilidade = ?, atualizado_por_wp_user_id = ?, dth_atualizacao = NOW()
+             WHERE bolao_competicao_id = ?'
+        );
+        $stmt->execute([$visibility, get_current_user_id(), $pool_id]);
+
+        self::audit(
+            $pdo,
+            'BOLAO_VISIBILIDADE_ALTERADA',
+            'bolao_competicoes',
+            $pool_id,
+            $pool_id,
+            ['visibilidade' => $current['visibilidade']],
+            ['visibilidade' => $visibility]
+        );
+    }
+
     private static function get_pools($pdo) {
         $stmt = $pdo->query(
             'SELECT
@@ -267,6 +335,7 @@ class Mengao360_Bolao_Admin_Pools {
                 bc.slug_bolao,
                 bc.temporada,
                 bc.estado_operacional,
+                bc.visibilidade,
                 bc.ind_ativo,
                 dc.nome AS competicao_nome,
                 dcm.nome_modelo
@@ -438,16 +507,16 @@ class Mengao360_Bolao_Admin_Pools {
         echo '</div>';
     }
 
-    private static function render_pool_list($pools) {
+    private static function render_pool_list($pdo, $pools) {
         echo '<h2>' . esc_html__('Bolões cadastrados', 'mengao360-bolao') . '</h2>';
         echo '<table class="widefat striped"><thead><tr>';
-        foreach (['ID', 'Bolão', 'Competição', 'Temporada', 'Modelo', 'Estado', 'Ação'] as $heading) {
+        foreach (['ID', 'Bolão', 'Competição', 'Temporada', 'Modelo', 'Estado', 'Visibilidade', 'Ação'] as $heading) {
             echo '<th>' . esc_html($heading) . '</th>';
         }
         echo '</tr></thead><tbody>';
 
         if (!$pools) {
-            echo '<tr><td colspan="7">' . esc_html__('Nenhum bolão cadastrado.', 'mengao360-bolao') . '</td></tr>';
+            echo '<tr><td colspan="8">' . esc_html__('Nenhum bolão cadastrado.', 'mengao360-bolao') . '</td></tr>';
         }
 
         foreach ($pools as $pool) {
@@ -458,11 +527,56 @@ class Mengao360_Bolao_Admin_Pools {
             echo '<td>' . esc_html($pool['temporada']) . '</td>';
             echo '<td>' . esc_html($pool['nome_modelo'] ?: '—') . '</td>';
             echo '<td>' . esc_html($pool['estado_operacional']) . '</td>';
+            echo '<td>' . self::render_visibility_form($pool) . '</td>';
             echo '<td>' . self::render_transition_form($pool) . self::render_sync_form($pool) . '</td>';
             echo '</tr>';
+
+            if (in_array($pool['estado_operacional'], ['RASCUNHO', 'BLOQUEADO'], true)) {
+                echo '<tr><td colspan="8">';
+                self::render_opening_gate(
+                    Mengao360_Bolao_Opening_Gate::evaluate(
+                        $pdo,
+                        (int) $pool['bolao_competicao_id']
+                    )
+                );
+                echo '</td></tr>';
+            }
         }
 
         echo '</tbody></table>';
+    }
+
+    private static function render_visibility_form($pool) {
+        if ((int) $pool['ind_ativo'] !== 1) {
+            return esc_html($pool['visibilidade']);
+        }
+
+        $target = $pool['visibilidade'] === 'ADMIN' ? 'PUBLICO' : 'ADMIN';
+        ob_start();
+        echo '<strong>' . esc_html($pool['visibilidade']) . '</strong>';
+        if ($target === 'PUBLICO' && $pool['estado_operacional'] !== 'ABERTO') {
+            echo '<p class="description">A publicação será liberada somente após a abertura controlada.</p>';
+            return ob_get_clean();
+        }
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin-top:6px;">';
+        wp_nonce_field('m360_bolao_pool_action');
+        echo '<input type="hidden" name="action" value="m360_bolao_pool_action">';
+        echo '<input type="hidden" name="acao_bolao" value="visibility">';
+        echo '<input type="hidden" name="bolao_competicao_id" value="' . (int) $pool['bolao_competicao_id'] . '">';
+        echo '<input type="hidden" name="visibilidade" value="' . esc_attr($target) . '">';
+        if ($target === 'PUBLICO') {
+            echo '<label style="display:block;margin-bottom:6px;"><input type="checkbox" name="confirmar_publicacao" value="1"> '
+                . esc_html__('Confirmo a publicação para visitantes.', 'mengao360-bolao') . '</label>';
+        }
+        submit_button(
+            $target === 'ADMIN' ? __('Restringir a administradores', 'mengao360-bolao') : __('Publicar para visitantes', 'mengao360-bolao'),
+            'small secondary',
+            'submit',
+            false
+        );
+        echo '</form>';
+
+        return ob_get_clean();
     }
 
     private static function render_transition_form($pool) {
@@ -491,6 +605,12 @@ class Mengao360_Bolao_Admin_Pools {
             echo '<option value="' . esc_attr($target) . '">' . esc_html($target) . '</option>';
         }
         echo '</select> ';
+        if (in_array('ABERTO', $available, true)) {
+            echo '<label style="display:block;margin:8px 0;">';
+            echo '<input type="checkbox" name="confirmar_abertura_controlada" value="1"> ';
+            echo esc_html__('Confirmo que revisei o gate e autorizo a abertura controlada.', 'mengao360-bolao');
+            echo '</label>';
+        }
         submit_button(__('Aplicar', 'mengao360-bolao'), 'small', 'submit', false);
         echo '</form>';
 
@@ -512,6 +632,27 @@ class Mengao360_Bolao_Admin_Pools {
         echo '</form>';
 
         return ob_get_clean();
+    }
+
+    private static function render_opening_gate($report) {
+        $ready = !empty($report['ready']);
+        echo '<div style="padding:12px 16px;border-left:4px solid '
+            . ($ready ? '#00a32a' : '#d63638') . ';background:#fff;">';
+        echo '<h3 style="margin-top:0;">' . esc_html__('Gate de abertura controlada', 'mengao360-bolao') . '</h3>';
+        echo '<p><strong>'
+            . ($ready
+                ? esc_html__('PRONTO PARA ABERTURA CONTROLADA', 'mengao360-bolao')
+                : esc_html__('ABERTURA BLOQUEADA', 'mengao360-bolao'))
+            . '</strong></p>';
+        echo '<table class="widefat striped"><thead><tr><th>Verificação</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>';
+        foreach ($report['checks'] ?? [] as $check) {
+            echo '<tr><td>' . esc_html($check['label']) . '</td><td><strong>'
+                . esc_html($check['status']) . '</strong></td><td>'
+                . esc_html($check['detail']) . '</td></tr>';
+        }
+        echo '</tbody></table>';
+        echo '<p class="description">O relatório é somente leitura. A abertura exige confirmação explícita e uma nova avaliação no servidor.</p>';
+        echo '</div>';
     }
 
     private static function render_create_form($competitions, $scoring_rules, $credit_rules, $statuses) {

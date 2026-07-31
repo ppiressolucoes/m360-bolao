@@ -154,7 +154,9 @@ class Mengao360_Bolao_Ligas {
                 $competicao_slug,
                 $bolao_competicao_id
             );
-            if (is_wp_error($context) || strtoupper((string) $context->estado_operacional) !== 'ABERTO') {
+            if (is_wp_error($context)
+                || strtoupper((string) $context->estado_operacional) !== 'ABERTO'
+                || !Mengao360_Bolao_Context::is_visible_to_current_user($context)) {
                 return [
                     'sucesso' => false,
                     'mensagem' => self::t('bolao_nao_encontrado')
@@ -334,7 +336,9 @@ class Mengao360_Bolao_Ligas {
                 (int) $bolao_competicao_id
             );
 
-            if (is_wp_error($context) || strtoupper((string) $context->estado_operacional) !== 'ABERTO') {
+            if (is_wp_error($context)
+                || strtoupper((string) $context->estado_operacional) !== 'ABERTO'
+                || !Mengao360_Bolao_Context::is_visible_to_current_user($context)) {
                 return [
                     'sucesso' => false,
                     'mensagem' => self::t('bolao_nao_encontrado')

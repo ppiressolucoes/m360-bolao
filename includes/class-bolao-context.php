@@ -30,6 +30,8 @@ class Mengao360_Bolao_Context {
             && Mengao360_Bolao_Schema::column_exists($pdo, 'bolao_competicoes', 'estado_operacional');
         $has_window = class_exists('Mengao360_Bolao_Schema')
             && Mengao360_Bolao_Schema::column_exists($pdo, 'bolao_competicoes', 'janela_fechamento_minutos');
+        $has_visibility = class_exists('Mengao360_Bolao_Schema')
+            && Mengao360_Bolao_Schema::column_exists($pdo, 'bolao_competicoes', 'visibilidade');
 
         $sql = '
             SELECT
@@ -45,6 +47,7 @@ class Mengao360_Bolao_Context {
                 dc.nome AS competicao_nome,
                 dc.modelo_id,
                 ' . ($has_state ? 'bc.estado_operacional' : "'ABERTO' AS estado_operacional") . ',
+                ' . ($has_visibility ? 'bc.visibilidade' : "'PUBLICO' AS visibilidade") . ',
                 ' . ($has_window ? 'bc.janela_fechamento_minutos' : '10 AS janela_fechamento_minutos') . '
             FROM bolao_competicoes bc
             INNER JOIN dim_competicoes dc
@@ -70,6 +73,16 @@ class Mengao360_Bolao_Context {
         }
 
         return $rows[0];
+    }
+
+    public static function is_visible_to_current_user($context) {
+        $visibility = strtoupper((string) ($context->visibilidade ?? 'PUBLICO'));
+
+        if ($visibility === 'PUBLICO') {
+            return true;
+        }
+
+        return $visibility === 'ADMIN' && current_user_can('manage_options');
     }
 
     public static function ensure_participant($pdo, $bolao_id, $usuario_bolao_id, $wp_user_id) {

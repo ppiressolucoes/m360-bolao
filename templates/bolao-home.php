@@ -647,6 +647,11 @@ $m360_bolao_encerrado = isset($bolao_estado_operacional)
          ============================================================ -->
     <section id="m360-agenda-palpites" class="m360-bolao-card">
         <h2><?php echo $m360_txt_esc('LABEL', 'agenda_de_palpites', 'Agenda de Palpites', 'BOLAO'); ?></h2>
+        <p class="m360-bolao-tabela-completa">
+            <a href="<?php echo esc_url($m360_url_competicao); ?>">
+                <?php echo esc_html($m360_inline('Ver tabela completa da competição', 'View the full competition table', 'Ver la tabla completa de la competición')); ?>
+            </a>
+        </p>
 
         <?php if (!empty($datas_jogos)): ?>
 

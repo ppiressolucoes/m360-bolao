@@ -330,7 +330,7 @@ class Mengao360_Bolao_Ajax {
                     dth_ultima_alteracao = NOW()
             ");
 
-            $stmt->execute([
+            $written = $stmt->execute([
                 $bolao_competicao_id,
                 $usuario_bolao_id,
                 $jogo_id,
@@ -339,10 +339,35 @@ class Mengao360_Bolao_Ajax {
                 $placar_visitante
             ]);
 
+            if (!$written) {
+                throw new RuntimeException('A gravação do palpite não foi confirmada pelo DW.');
+            }
+
+            // Confirma a escrita antes do commit e da resposta de sucesso.
+            $stmt = $pdo->prepare(
+                'SELECT palpite_id, placar_mandante, placar_visitante
+                 FROM bolao_palpites
+                 WHERE bolao_competicao_id = ?
+                   AND usuario_bolao_id = ?
+                   AND jogo_id = ?
+                 ORDER BY palpite_id DESC
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $stmt->execute([$bolao_competicao_id, $usuario_bolao_id, $jogo_id]);
+            $persisted = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$persisted
+                || (int) $persisted['placar_mandante'] !== (int) $placar_mandante
+                || (int) $persisted['placar_visitante'] !== (int) $placar_visitante) {
+                throw new RuntimeException('O palpite não pôde ser relido após a gravação.');
+            }
+
             $pdo->commit();
 
             wp_send_json_success([
-                'mensagem' => self::t('palpite_salvo')
+                'mensagem' => self::t('palpite_salvo'),
+                'palpite_id' => (int) $persisted['palpite_id'],
             ]);
 
         } catch (Throwable $e) {

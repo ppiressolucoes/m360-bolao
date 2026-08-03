@@ -15,7 +15,15 @@ class Mengao360_Bolao_DB {
             return null;
         }
 
-        return conectar_dw_esportes_m360();
+        $pdo = conectar_dw_esportes_m360();
+
+        if ($pdo instanceof PDO) {
+            // Falhas de escrita jamais podem virar uma confirmação visual falsa.
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        }
+
+        return $pdo;
     }
 
     /**
@@ -37,6 +45,10 @@ class Mengao360_Bolao_DB {
                 LEFT JOIN bolao_competicoes bc
                     ON bc.competicao_id = dc.id
                 WHERE dc.slug = ?
+                  AND NOT (
+                      UPPER(TRIM(COALESCE(fj.rodada, ''))) = 'LAST_16'
+                      AND (fj.mandante_id IS NULL OR fj.visitante_id IS NULL)
+                  )
                   AND (? = 0 OR bc.bolao_competicao_id = ?)
                 ORDER BY DATE(fj.data_jogo)
             ";
@@ -140,6 +152,10 @@ class Mengao360_Bolao_DB {
                 LEFT JOIN dim_times tv
                     ON tv.id = fj.visitante_id
                 WHERE dc.slug = ?
+                  AND NOT (
+                      UPPER(TRIM(COALESCE(fj.rodada, ''))) = 'LAST_16'
+                      AND (fj.mandante_id IS NULL OR fj.visitante_id IS NULL)
+                  )
                   AND DATE(fj.data_jogo) = ?
                   AND (? = 0 OR bc.bolao_competicao_id = ?)
                 ORDER BY fj.data_jogo, fj.id

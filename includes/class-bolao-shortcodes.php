@@ -11,6 +11,13 @@ class Mengao360_Bolao_Shortcodes {
     }
 
     public static function render_bolao($atts) {
+        // A agenda contém dados personalizados (palpites do usuário) e não pode
+        // ser servida como página pública compartilhada pelo cache do portal.
+        if (!defined('DONOTCACHEPAGE')) {
+            define('DONOTCACHEPAGE', true);
+        }
+        nocache_headers();
+
         $atts = shortcode_atts([
             'bolao' => '',
             'competicao' => 'fifa-world-cup',

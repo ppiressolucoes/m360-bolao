@@ -8,6 +8,7 @@ class Mengao360_Bolao_Shortcodes {
 
     public static function init() {
         add_shortcode('bolao_mengao', [__CLASS__, 'render_bolao']);
+        add_shortcode('mega_bolao_360_home', ['Mengao360_Bolao_Product_Hub', 'render']);
     }
 
     public static function render_bolao($atts) {

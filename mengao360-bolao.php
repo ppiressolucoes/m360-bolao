@@ -2,7 +2,7 @@
 /**
  * Plugin Name: M360 - Mega Bolão 360
  * Description: Módulo de Bolões Esportivos do Portal Mengão 360.
- * Version: 0.1.9
+ * Version: 0.2.2
  * Author: Mengão 360
  * Text Domain: mengao360-bolao
  * Domain Path: /languages
@@ -12,9 +12,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MENGAO360_BOLAO_PLUGIN_VERSION', '0.1.9');
+define('MENGAO360_BOLAO_PLUGIN_VERSION', '0.2.2');
 define('MENGAO360_BOLAO_VERSION', MENGAO360_BOLAO_PLUGIN_VERSION);
-define('MENGAO360_BOLAO_BUILD', 'commercial-c1-prediction-persistence.2');
+define('MENGAO360_BOLAO_BUILD', 'commercial-c2-product-hub-pre-homologation.3');
 define(
     'MENGAO360_BOLAO_ASSET_VERSION',
     MENGAO360_BOLAO_VERSION . '-' . MENGAO360_BOLAO_BUILD
@@ -40,6 +40,7 @@ require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-game-guard.php';
 require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-opening-gate.php';
 require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-sync.php';
 require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-shortcodes.php';
+require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-product-hub.php';
 require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-user.php';
 require_once MENGAO360_BOLAO_PATH . 'includes/class-bolao-ajax.php';
 

@@ -4,7 +4,8 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <section class="m360-product-hub" data-language="<?php echo esc_attr($lang); ?>">
-    <header id="m360-inicio" class="m360-product-hero">
+    <?php if ($show('hero')): ?>
+<header id="m360-inicio" class="m360-product-hero">
         <div class="m360-product-hero__content">
             <span class="m360-product-eyebrow"><?php echo esc_html($hub_copy['eyebrow']); ?></span>
             <h1><?php echo esc_html($hub_copy['title']); ?></h1>
@@ -33,16 +34,35 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
     </header>
+<?php endif; ?>
 
-    <nav class="m360-product-nav" aria-label="Mega Bol&atilde;o 360">
-        <a href="#m360-inicio"><?php echo esc_html($hub_copy['menu'][0]); ?></a>
-        <a href="#m360-competicoes"><?php echo esc_html($hub_copy['menu'][1]); ?></a>
-        <a href="#m360-vantagens"><?php echo esc_html($hub_copy['menu'][2]); ?></a>
-        <a href="#m360-como-funciona"><?php echo esc_html($hub_copy['menu'][3]); ?></a>
-        <a href="#m360-faq"><?php echo esc_html($hub_copy['menu'][4]); ?></a>
+    <?php if ($show('menu')): ?>
+<nav class="m360-product-nav" aria-label="Mega Bol&atilde;o 360">
+        <?php if (has_nav_menu('m360-product-hub')): ?>
+            <?php
+            wp_nav_menu([
+                'theme_location' => 'm360-product-hub',
+                'container' => false,
+                'menu_class' => 'm360-product-nav__list',
+                'fallback_cb' => false,
+                'depth' => 1,
+            ]);
+            ?>
+        <?php else: ?>
+            <div class="m360-product-nav__list">
+                <a href="#m360-inicio"><?php echo esc_html($hub_copy['menu'][0]); ?></a>
+                <a href="#m360-competicoes"><?php echo esc_html($hub_copy['menu'][1]); ?></a>
+                <a href="#m360-vantagens"><?php echo esc_html($hub_copy['menu'][2]); ?></a>
+                <a href="#m360-planos"><?php echo esc_html($hub_copy['menu'][3]); ?></a>
+                <a href="#m360-como-funciona"><?php echo esc_html($hub_copy['menu'][4]); ?></a>
+                <a href="#m360-faq"><?php echo esc_html($hub_copy['menu'][5]); ?></a>
+            </div>
+        <?php endif; ?>
     </nav>
+<?php endif; ?>
 
-    <section class="m360-product-section m360-product-overview" aria-labelledby="m360-overview-title">
+    <?php if ($show('overview')): ?>
+<section class="m360-product-section m360-product-overview" aria-labelledby="m360-overview-title">
         <div class="m360-product-heading">
             <span class="m360-product-kicker">MEGA BOL&Atilde;O 360</span>
             <h2 id="m360-overview-title"><?php echo esc_html($hub_copy['overview_title']); ?></h2>
@@ -74,8 +94,10 @@ if (!defined('ABSPATH')) {
             <?php endif; ?>
         </div>
     </section>
+<?php endif; ?>
 
-    <section id="m360-competicoes" class="m360-product-section">
+    <?php if ($show('competitions')): ?>
+<section id="m360-competicoes" class="m360-product-section">
         <div class="m360-product-heading">
             <span class="m360-product-kicker">DW ESPORTIVO</span>
             <h2><?php echo esc_html($hub_copy['competitions_title']); ?></h2>
@@ -137,8 +159,10 @@ if (!defined('ABSPATH')) {
             </div>
         <?php endif; ?>
     </section>
+<?php endif; ?>
 
-    <section id="m360-vantagens" class="m360-product-section m360-product-benefits">
+    <?php if ($show('benefits')): ?>
+<section id="m360-vantagens" class="m360-product-section m360-product-benefits">
         <div class="m360-product-heading">
             <span class="m360-product-kicker">360&deg;</span>
             <h2><?php echo esc_html($hub_copy['benefits_title']); ?></h2>
@@ -154,8 +178,39 @@ if (!defined('ABSPATH')) {
             <?php endforeach; ?>
         </div>
     </section>
+<?php endif; ?>
 
-    <section id="m360-como-funciona" class="m360-product-section m360-product-section--soft">
+    <?php if ($show('plans')): ?>
+<section id="m360-planos" class="m360-product-section m360-product-plans">
+        <div class="m360-product-heading">
+            <span class="m360-product-kicker">PLANOS</span>
+            <h2><?php echo esc_html($hub_copy['plans_title']); ?></h2>
+            <p><?php echo esc_html($hub_copy['plans_lead']); ?></p>
+        </div>
+        <div class="m360-product-plan-grid">
+            <?php foreach ($hub_copy['plans'] as $index => $plan): ?>
+                <?php $plan_keys = ['free', 'jogador', 'dirigente']; ?>
+                <article class="m360-product-plan<?php echo $index === 1 ? ' m360-product-plan--featured' : ''; ?>">
+                    <span class="m360-product-plan__badge"><?php echo esc_html($hub_copy['plans_badge'][$index]); ?></span>
+                    <h3><?php echo esc_html($plan[0]); ?></h3>
+                    <p><?php echo esc_html($plan[1]); ?></p>
+                    <ul>
+                        <?php foreach ($plan[2] as $feature): ?>
+                            <li><?php echo esc_html($feature); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <a href="<?php echo esc_url($hub_plan_urls[$plan_keys[$index]]); ?>" class="m360-product-card__cta">
+                        <?php echo esc_html($hub_copy['plan_cta'][$index]); ?>
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
+                </article>
+            <?php endforeach; ?>
+        </div>
+        <p class="m360-product-plan-notice"><?php echo esc_html($hub_copy['plan_notice']); ?></p>
+    </section>
+<?php endif; ?>
+    <?php if ($show('how')): ?>
+<section id="m360-como-funciona" class="m360-product-section m360-product-section--soft">
         <div class="m360-product-heading">
             <span class="m360-product-kicker">MEGA BOL&Atilde;O 360</span>
             <h2><?php echo esc_html($hub_copy['how_title']); ?></h2>
@@ -172,16 +227,20 @@ if (!defined('ABSPATH')) {
             <?php endforeach; ?>
         </ol>
     </section>
+<?php endif; ?>
 
-    <section id="m360-dados" class="m360-product-trust">
+    <?php if ($show('trust')): ?>
+<section id="m360-dados" class="m360-product-trust">
         <div class="m360-product-trust__mark" aria-hidden="true">DW</div>
         <div>
             <h2><?php echo esc_html($hub_copy['trust_title']); ?></h2>
             <p><?php echo esc_html($hub_copy['trust_text']); ?></p>
         </div>
     </section>
+<?php endif; ?>
 
-    <section id="m360-faq" class="m360-product-section m360-product-faq">
+    <?php if ($show('faq')): ?>
+<section id="m360-faq" class="m360-product-section m360-product-faq">
         <div class="m360-product-heading">
             <h2><?php echo esc_html($hub_copy['faq_title']); ?></h2>
         </div>
@@ -192,4 +251,16 @@ if (!defined('ABSPATH')) {
             </details>
         <?php endforeach; ?>
     </section>
+<?php endif; ?>
+    <?php if ($show('cta')): ?>
+<section id="m360-cta" class="m360-product-cta">
+        <div>
+            <h2><?php echo esc_html($hub_copy['cta_title']); ?></h2>
+            <p><?php echo esc_html($hub_copy['cta_text']); ?></p>
+        </div>
+        <a class="m360-product-button m360-product-button--primary" href="<?php echo esc_url($hub_cta_url); ?>">
+            <?php echo esc_html($hub_copy['cta_button']); ?>
+        </a>
+    </section>
+<?php endif; ?>
 </section>

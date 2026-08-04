@@ -7,10 +7,40 @@ if (!defined('ABSPATH')) {
 class Mengao360_Bolao_Shortcodes {
 
     public static function init() {
+        register_nav_menu(
+            'm360-product-hub',
+            __('Mega Bolão 360 — Product Hub', 'mengao360-bolao')
+        );
         add_shortcode('bolao_mengao', [__CLASS__, 'render_bolao']);
         add_shortcode('mega_bolao_360_home', ['Mengao360_Bolao_Product_Hub', 'render']);
+        foreach ([
+            'm360_hub_hero', 'm360_hub_menu', 'm360_hub_overview',
+            'm360_hub_competitions', 'm360_hub_benefits', 'm360_hub_plans',
+            'm360_hub_how', 'm360_hub_trust', 'm360_hub_faq', 'm360_hub_cta',
+        ] as $shortcode) {
+            add_shortcode($shortcode, [__CLASS__, 'render_hub_component']);
+        }
     }
 
+
+    public static function render_hub_component($atts, $content = null, $shortcode = '') {
+        $map = [
+            'm360_hub_hero' => 'hero',
+            'm360_hub_menu' => 'menu',
+            'm360_hub_overview' => 'overview',
+            'm360_hub_competitions' => 'competitions',
+            'm360_hub_benefits' => 'benefits',
+            'm360_hub_plans' => 'plans',
+            'm360_hub_how' => 'how',
+            'm360_hub_trust' => 'trust',
+            'm360_hub_faq' => 'faq',
+            'm360_hub_cta' => 'cta',
+        ];
+        if (!isset($map[$shortcode])) {
+            return '';
+        }
+        return Mengao360_Bolao_Product_Hub::render_component($map[$shortcode], $atts);
+    }
     public static function render_bolao($atts) {
         // A agenda contém dados personalizados (palpites do usuário) e não pode
         // ser servida como página pública compartilhada pelo cache do portal.

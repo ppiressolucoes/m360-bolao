@@ -2,7 +2,7 @@
 /**
  * Plugin Name: M360 - Mega Bolão 360
  * Description: Módulo de Bolões Esportivos do Portal Mengão 360.
- * Version: 0.2.2
+ * Version: 0.3.0
  * Author: Mengão 360
  * Text Domain: mengao360-bolao
  * Domain Path: /languages
@@ -12,9 +12,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MENGAO360_BOLAO_PLUGIN_VERSION', '0.2.2');
+define('MENGAO360_BOLAO_PLUGIN_VERSION', '0.3.0');
 define('MENGAO360_BOLAO_VERSION', MENGAO360_BOLAO_PLUGIN_VERSION);
-define('MENGAO360_BOLAO_BUILD', 'commercial-c2-product-hub-pre-homologation.3');
+define('MENGAO360_BOLAO_BUILD', 'commercial-c3-composable-hub-pre-homologation.1');
 define(
     'MENGAO360_BOLAO_ASSET_VERSION',
     MENGAO360_BOLAO_VERSION . '-' . MENGAO360_BOLAO_BUILD

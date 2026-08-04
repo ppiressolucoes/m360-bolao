@@ -11,6 +11,24 @@ if (!defined('ABSPATH')) {
 class Mengao360_Bolao_Product_Hub {
 
     public static function render($atts) {
+        return self::render_sections([
+            'hero', 'menu', 'overview', 'competitions', 'benefits',
+            'plans', 'how', 'trust', 'faq', 'cta',
+        ], $atts, 'mega_bolao_360_home');
+    }
+
+    public static function render_component($component, $atts = []) {
+        $allowed = [
+            'hero', 'menu', 'overview', 'competitions', 'benefits',
+            'plans', 'how', 'trust', 'faq', 'cta',
+        ];
+        if (!in_array($component, $allowed, true)) {
+            return '';
+        }
+        return self::render_sections([$component], $atts, 'm360_hub_' . $component);
+    }
+
+    private static function render_sections($sections, $atts, $shortcode_tag) {
         if (!defined('DONOTCACHEPAGE')) {
             define('DONOTCACHEPAGE', true);
         }
@@ -19,7 +37,11 @@ class Mengao360_Bolao_Product_Hub {
         $atts = shortcode_atts([
             'idioma' => '',
             'competicoes' => 'fifa-world-cup,brasileirao-serie-a,copa-libertadores,copa-do-brasil,cl,bl1,ded,pd,fl1,elc,ppl,ec,sa,pl',
-        ], $atts, 'mega_bolao_360_home');
+            'free_url' => '#m360-cta',
+            'jogador_url' => '#m360-cta',
+            'dirigente_url' => '#m360-cta',
+            'cta_url' => '',
+        ], $atts, $shortcode_tag);
 
         $lang = sanitize_text_field((string) $atts['idioma']);
         if (!in_array($lang, ['pt-BR', 'en-US'], true)) {
@@ -34,7 +56,11 @@ class Mengao360_Bolao_Product_Hub {
             explode(',', (string) $atts['competicoes'])
         ))));
         $hub_copy = self::copy($lang);
-        $hub_items = self::catalog($slugs, $lang);
+        $needs_catalog = (bool) array_intersect(
+            $sections,
+            ['hero', 'overview', 'competitions']
+        );
+        $hub_items = $needs_catalog ? self::catalog($slugs, $lang) : [];
         $hub_open_count = count(array_filter($hub_items, function ($item) {
             return $item['state'] === 'ABERTO';
         }));
@@ -49,6 +75,20 @@ class Mengao360_Bolao_Product_Hub {
                 || strtotime($item['next_game']) < strtotime($hub_next_item['next_game'])) {
                 $hub_next_item = $item;
             }
+        }
+
+        $hub_sections = array_fill_keys($sections, true);
+        $show = static function ($section) use ($hub_sections) {
+            return isset($hub_sections[$section]);
+        };
+        $hub_plan_urls = [
+            'free' => esc_url((string) $atts['free_url']),
+            'jogador' => esc_url((string) $atts['jogador_url']),
+            'dirigente' => esc_url((string) $atts['dirigente_url']),
+        ];
+        $hub_cta_url = esc_url((string) $atts['cta_url']);
+        if ($hub_cta_url === '') {
+            $hub_cta_url = wp_registration_url();
         }
 
         ob_start();
@@ -245,11 +285,24 @@ class Mengao360_Bolao_Product_Hub {
             'title' => 'Mega Bolão 360',
             'lead' => 'Palpite, acompanhe sua pontuação e dispute rankings nas principais competições acompanhadas pelo Mengão 360.',
             'primary_cta' => 'Ver competições', 'secondary_cta' => 'Como funciona',
-            'menu' => ['Início', 'Competições', 'Vantagens', 'Como funciona', 'FAQ'],
+            'menu' => ['Início', 'Competições', 'Vantagens', 'Planos', 'Como funciona', 'FAQ'],
             'overview_title' => 'O Mega Bolão 360 agora',
             'overview_lead' => 'Um painel rápido da operação esportiva disponível no portal.',
             'games_label' => 'jogos monitorados', 'future_label' => 'próximos jogos',
             'next_competition' => 'próxima competição em campo',
+            'plans_title' => 'Um plano para cada jeito de jogar',
+            'plans_lead' => 'A apresentação comercial já está preparada; limites definitivos e cobranças serão ativados somente após homologação.',
+            'plans_badge' => ['Comece aqui', 'Para grupos', 'Para comunidades'],
+            'plans' => [
+                ['Free', 'Crie seu primeiro bolão', ['1 bolão próprio', 'Participantes limitados', 'Regras padrão', 'Convite por WhatsApp']],
+                ['Jogador', 'Mais espaço para competir', ['Mais participantes', 'Ligas privadas', 'Rankings avançados', 'Mais recursos de comunidade']],
+                ['Dirigente', 'Gestão para grandes comunidades', ['Múltiplos bolões', 'Personalização', 'Exportação CSV', 'Suporte prioritário']],
+            ],
+            'plan_cta' => ['Começar gratuitamente', 'Conhecer o plano', 'Falar com o Mengão 360'],
+            'plan_notice' => 'Limites e disponibilidade sujeitos ao gate comercial.',
+            'cta_title' => 'Pronto para entrar no jogo?',
+            'cta_text' => 'Escolha uma competição aberta ou acompanhe o lançamento dos próximos planos.',
+            'cta_button' => 'Começar agora',
             'benefits_title' => 'Tudo para viver cada competição',
             'benefits_lead' => 'Uma experiência única para palpitar, acompanhar e competir com segurança.',
             'benefits' => [
@@ -291,11 +344,24 @@ class Mengao360_Bolao_Product_Hub {
             'eyebrow' => 'Football pools in one place', 'title' => 'Mega Bolão 360',
             'lead' => 'Predict scores, track your points and compete in rankings across the main competitions covered by Mengão 360.',
             'primary_cta' => 'Browse competitions', 'secondary_cta' => 'How it works',
-            'menu' => ['Home', 'Competitions', 'Benefits', 'How it works', 'FAQ'],
+            'menu' => ['Home', 'Competitions', 'Benefits', 'Plans', 'How it works', 'FAQ'],
             'overview_title' => 'Mega Bolão 360 right now',
             'overview_lead' => 'A quick snapshot of the sports operation available on the portal.',
             'games_label' => 'matches monitored', 'future_label' => 'upcoming matches',
             'next_competition' => 'next competition on the pitch',
+            'plans_title' => 'A plan for every way to play',
+            'plans_lead' => 'The commercial presentation is ready; final limits and billing will only be enabled after approval.',
+            'plans_badge' => ['Start here', 'For groups', 'For communities'],
+            'plans' => [
+                ['Free', 'Create your first pool', ['1 pool of your own', 'Limited participants', 'Standard rules', 'WhatsApp invitations']],
+                ['Player', 'More room to compete', ['More participants', 'Private leagues', 'Advanced rankings', 'More community features']],
+                ['Manager', 'Management for large communities', ['Multiple pools', 'Customization', 'CSV export', 'Priority support']],
+            ],
+            'plan_cta' => ['Start for free', 'Explore the plan', 'Talk to Mengão 360'],
+            'plan_notice' => 'Limits and availability are subject to the commercial gate.',
+            'cta_title' => 'Ready to join the game?',
+            'cta_text' => 'Choose an open competition or follow the launch of upcoming plans.',
+            'cta_button' => 'Get started',
             'benefits_title' => 'Everything you need for every competition',
             'benefits_lead' => 'One place to predict, follow and compete with confidence.',
             'benefits' => [

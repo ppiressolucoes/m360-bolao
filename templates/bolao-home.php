@@ -455,9 +455,17 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
     return [];
 };
 
+$m360_bolao_encerrado = isset($bolao_estado_operacional)
+    && $bolao_estado_operacional === 'ENCERRADO';
+
 ?>
 
-<div class="m360-bolao" data-competicao="<?php echo esc_attr($competicao_slug); ?>" data-lang="<?php echo esc_attr($m360_lang); ?>">
+<div class="m360-bolao"
+     data-bolao-id="<?php echo esc_attr($bolao_competicao_id); ?>"
+     data-bolao="<?php echo esc_attr($bolao_slug); ?>"
+     data-competicao="<?php echo esc_attr($competicao_slug); ?>"
+     data-visibilidade="<?php echo esc_attr($bolao_visibilidade ?? 'PUBLICO'); ?>"
+     data-lang="<?php echo esc_attr($m360_lang); ?>">
 
     <!-- ============================================================
          Hero do Bolão
@@ -465,17 +473,69 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
     <section class="m360-bolao-hero">
         <div>
             <span class="m360-bolao-tag"><?php echo $m360_txt_esc('LABEL', 'meu_bolao_360', 'Meu Bolão 360', 'BOLAO'); ?></span>
-            <h1><?php echo $m360_txt_esc('LABEL', 'titulo_bolao_wc26', 'Bolão Copa do Mundo FIFA 2026', 'BOLAO'); ?></h1>
+            <h1>
+                <?php if (!empty($bolao_usar_conteudo_legado_wc)): ?>
+                    <?php echo $m360_txt_esc('LABEL', 'titulo_bolao_wc26', 'Bolão Copa do Mundo FIFA 2026', 'BOLAO'); ?>
+                <?php else: ?>
+                    <?php echo esc_html($bolao_titulo_publico); ?>
+                <?php endif; ?>
+            </h1>
             <p>
-                <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                <?php if ($m360_bolao_encerrado): ?>
+                    <?php echo esc_html($m360_inline(
+                        'Competição encerrada. Consulte os resultados, palpites apurados e o ranking final.',
+                        'Pool closed. Browse the results, scored predictions and final ranking.',
+                        'Quiniela finalizada. Consulta los resultados, pronósticos calculados y la clasificación final.'
+                    )); ?>
+                <?php else: ?>
+                    <?php if (!empty($bolao_usar_conteudo_legado_wc)): ?>
+                        <?php echo $m360_txt_esc('MENSAGEM', 'hero_subtitulo_wc26', 'Dê seus palpites, acompanhe sua pontuação, dispute rankings e participe de ligas com amigos.', 'BOLAO'); ?>
+                    <?php else: ?>
+                        <?php echo esc_html($bolao_descricao_publica); ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </p>
         </div>
     </section>
 
+    <?php if (($bolao_visibilidade ?? 'PUBLICO') === 'ADMIN' && current_user_can('manage_options')): ?>
+        <section class="m360-bolao-card m360-bolao-estado-card">
+            <h2><?php echo esc_html($m360_inline('Homologação restrita', 'Restricted validation', 'Validación restringida')); ?></h2>
+            <p><?php echo esc_html($m360_inline(
+                'Somente administradores podem acessar este bolão. Visitantes continuam bloqueados.',
+                'Only administrators can access this pool. Visitors remain blocked.',
+                'Solo los administradores pueden acceder a esta quiniela. Los visitantes permanecen bloqueados.'
+            )); ?></p>
+        </section>
+    <?php endif; ?>
+
+    <?php if (!$bolao_aberto): ?>
+        <section class="m360-bolao-card m360-bolao-estado-card">
+            <h2>
+                <?php echo esc_html($m360_bolao_encerrado
+                    ? $m360_inline('Bolão encerrado', 'Pool closed', 'Quiniela finalizada')
+                    : $m360_inline('Bolão indisponível para participação', 'Pool unavailable for participation', 'Quiniela no disponible para participar')); ?>
+            </h2>
+            <p>
+                <?php echo esc_html($m360_bolao_encerrado
+                    ? $m360_inline(
+                        'O período de palpites e participação em ligas terminou. Resultados e ranking permanecem disponíveis para consulta.',
+                        'Predictions and league participation have ended. Results and rankings remain available for viewing.',
+                        'El período de pronósticos y participación en ligas terminó. Los resultados y clasificaciones siguen disponibles.'
+                    )
+                    : $m360_inline(
+                        'Este bolão ainda não está aberto ou foi temporariamente bloqueado.',
+                        'This pool is not open yet or has been temporarily blocked.',
+                        'Esta quiniela aún no está abierta o fue bloqueada temporalmente.'
+                    )); ?>
+            </p>
+        </section>
+    <?php endif; ?>
+
     <!-- ============================================================
          Card de acesso para visitantes
          ============================================================ -->
-    <?php if (!$usuario_logado): ?>
+    <?php if (!$usuario_logado && $bolao_aberto): ?>
 
         <section id="m360-bolao-login" class="m360-bolao-card">
             <!-- ============================================================
@@ -493,7 +553,7 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
             </div>
         </section>
 
-    <?php else: ?>
+    <?php elseif ($usuario_logado): ?>
 
         <!-- ============================================================
              Painel resumido do usuário logado
@@ -587,6 +647,11 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
          ============================================================ -->
     <section id="m360-agenda-palpites" class="m360-bolao-card">
         <h2><?php echo $m360_txt_esc('LABEL', 'agenda_de_palpites', 'Agenda de Palpites', 'BOLAO'); ?></h2>
+        <p class="m360-bolao-tabela-completa">
+            <a href="<?php echo esc_url($m360_url_competicao); ?>">
+                <?php echo esc_html($m360_inline('Ver tabela completa da competição', 'View the full competition table', 'Ver la tabla completa de la competición')); ?>
+            </a>
+        </p>
 
         <?php if (!empty($datas_jogos)): ?>
 
@@ -669,15 +734,13 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                     // ============================================================
                     // Controle de abertura/bloqueio do palpite.
                     //
-                    // Regra oficial Sprint 5:
-                    // - Palpites encerram 10 minutos antes do horário da partida.
+                    // Regra configurada no bolão:
+                    // - Palpites encerram N minutos antes da partida.
                     //
                     // Observação:
                     // - A coluna palpite_aberto ainda é respeitada como fallback;
                     // - O cálculo abaixo usa o horário completo do jogo quando disponível.
                     // ============================================================
-                    $minutos_bloqueio_palpite = 10;
-
                     $data_hora_jogo = $jogo->data_jogo_completa
                         ?? ($jogo->data_jogo ?? '');
 
@@ -726,11 +789,6 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                         : false;
 
                     $agora_bolao = new DateTimeImmutable('now', $timezone_bolao);
-                    $timestamp_agora_bolao = $agora_bolao->getTimestamp();
-
-                    $palpite_aberto_por_horario = $timestamp_bloqueio
-                        ? $timestamp_agora_bolao < $timestamp_bloqueio
-                        : false;
 
                     // Evita bloqueio antecipado por flag SQL baseada em NOW() de outro fuso.
                     $status_jogo_atual = strtoupper((string) ($jogo->status_jogo ?? ''));
@@ -756,36 +814,15 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                         'GLOBAL'
                     );
 
-                    $status_bloqueados = [
-                        'FINISHED',
-                        'IN_PLAY',
-                        'LIVE',
-                        'PAUSED',
-                        'SUSPENDED',
-                        'CANCELLED',
-                        'CANCELED'
-                    ];
-
-                    $palpite_aberto_por_status = !in_array(
-                        $status_jogo_atual,
-                        $status_bloqueados,
-                        true
+                    // A UI usa exatamente a mesma decisão aplicada no AJAX.
+                    $m360_game_guard = Mengao360_Bolao_Game_Guard::evaluate(
+                        $jogo,
+                        $minutos_bloqueio_palpite,
+                        $agora_bolao
                     );
-
-                    // O confronto permanece visível, mas só aceita palpites
-                    // quando os dois times reais estiverem definidos.
-                    $mandante_id_jogo = isset($jogo->mandante_id) ? (int) $jogo->mandante_id : 0;
-                    $visitante_id_jogo = isset($jogo->visitante_id) ? (int) $jogo->visitante_id : 0;
-
-                    $confronto_definido = $mandante_id_jogo > 0
-                        && $visitante_id_jogo > 0
-                        && $mandante_id_jogo !== 9999
-                        && $visitante_id_jogo !== 9999
-                        && $mandante_id_jogo !== $visitante_id_jogo;
-
-                    $palpite_aberto = $confronto_definido
-                        && $palpite_aberto_por_status
-                        && $palpite_aberto_por_horario;
+                    $confronto_definido = Mengao360_Bolao_Game_Guard::teams_are_defined($jogo);
+                    $palpite_aberto = $bolao_aberto && !empty($m360_game_guard['allowed']);
+                    $m360_game_guard_code = (string) ($m360_game_guard['code'] ?? '');
 
                     $hora_bloqueio_palpite = $timestamp_bloqueio
                         ? wp_date('H:i', $timestamp_bloqueio, $timezone_bolao)
@@ -1025,6 +1062,22 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                                         <?php else: ?>
                                             <strong><?php echo esc_html($m360_inline('Você não registrou palpite para este jogo.', 'You did not save a prediction for this match.', 'No guardaste un pronóstico para este partido.')); ?></strong>
                                         <?php endif; ?>
+                                    <?php elseif (!$bolao_aberto): ?>
+                                        <?php if ($bolao_estado_operacional === 'RASCUNHO'): ?>
+                                            <strong><?php echo esc_html($m360_inline('Bolão em preparação', 'Pool in preparation', 'Quiniela en preparación')); ?></strong>
+                                            <small><?php echo esc_html($m360_inline(
+                                                'Este jogo é futuro. Os palpites serão liberados somente após a abertura oficial do bolão.',
+                                                'This is a future match. Predictions will open only after the pool is officially opened.',
+                                                'Este es un partido futuro. Los pronósticos se habilitarán únicamente después de la apertura oficial de la quiniela.'
+                                            )); ?></small>
+                                        <?php else: ?>
+                                            <strong><?php echo esc_html($m360_inline('Palpites indisponíveis', 'Predictions unavailable', 'Pronósticos no disponibles')); ?></strong>
+                                            <small><?php echo esc_html($m360_inline(
+                                                'O estado atual do bolão não permite novos palpites.',
+                                                'The current pool status does not allow new predictions.',
+                                                'El estado actual de la quiniela no permite nuevos pronósticos.'
+                                            )); ?></small>
+                                        <?php endif; ?>
                                     <?php elseif ($palpite_salvo): ?>
                                         <strong>
                                             <?php echo esc_html($m360_inline('Seu palpite:', 'Your prediction:', 'Tu pronóstico:')); ?> <?php echo esc_html($palpite_salvo->placar_mandante); ?>
@@ -1034,7 +1087,13 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                                         <small><?php echo esc_html($m360_inline('Palpites encerrados para este jogo.', 'Predictions are closed for this match.', 'Los pronósticos están cerrados para este partido.')); ?></small>
                                     <?php else: ?>
                                         <strong><?php echo esc_html($m360_inline('Palpites encerrados', 'Predictions closed', 'Pronósticos cerrados')); ?></strong>
-                                        <small><?php echo esc_html($m360_inline('Este jogo já foi iniciado e não aceita novos palpites.', 'This match has already started and no longer accepts new predictions.', 'Este partido ya comenzó y no acepta nuevos pronósticos.')); ?></small>
+                                        <?php if ($m360_game_guard_code === 'PREDICTION_WINDOW_CLOSED'): ?>
+                                            <small><?php echo esc_html($m360_inline('A janela de palpites deste jogo foi encerrada.', 'The prediction window for this match has closed.', 'La ventana de pronósticos de este partido se cerró.')); ?></small>
+                                        <?php elseif ($m360_game_guard_code === 'INVALID_MATCH_TIME'): ?>
+                                            <small><?php echo esc_html($m360_inline('O horário oficial do jogo está indisponível para validação.', 'The official match time is unavailable for validation.', 'El horario oficial del partido no está disponible para validación.')); ?></small>
+                                        <?php else: ?>
+                                            <small><?php echo esc_html($m360_inline('Este jogo já foi iniciado, finalizado ou não está disponível para novos palpites.', 'This match has started, finished, or is unavailable for new predictions.', 'Este partido comenzó, terminó o no está disponible para nuevos pronósticos.')); ?></small>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
 
@@ -1152,7 +1211,17 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
     <section class="m360-bolao-card m360-bolao-ligas-card">
         <h2><?php echo $m360_txt_esc('LABEL', 'minhas_ligas', 'Minhas Ligas', 'BOLAO'); ?></h2>
 
-        <?php if (!$usuario_logado): ?>
+        <?php if (!$bolao_aberto): ?>
+
+            <p class="m360-bolao-aviso">
+                <?php echo esc_html($m360_inline(
+                    'A criação e a entrada em ligas estão encerradas. Usuários autenticados ainda podem consultar suas ligas históricas.',
+                    'Creating and joining leagues is closed. Signed-in users can still view their historical leagues.',
+                    'La creación y el ingreso a ligas están cerrados. Los usuarios autenticados aún pueden consultar sus ligas históricas.'
+                )); ?>
+            </p>
+
+        <?php elseif (!$usuario_logado): ?>
 
             <!-- ============================================================
                  Visitante: chamada para login antes de criar/entrar em liga.
@@ -1226,6 +1295,10 @@ $m360_get_ranking_por_jogo = function($bolao_competicao_id, $jogo_id, $limit = 5
                 </div>
 
             </div>
+
+        <?php endif; ?>
+
+        <?php if ($usuario_logado): ?>
 
             <!-- ============================================================
                  Lista de ligas do usuário.

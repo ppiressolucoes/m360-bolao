@@ -96,7 +96,7 @@ class Mengao360_Bolao_Ligas {
     /**
      * Busca o bolao_competicao_id a partir do slug da competição.
      */
-    public static function get_bolao_competicao_id($competicao_slug) {
+    public static function get_bolao_competicao_id($competicao_slug, $bolao_competicao_id = 0) {
         $pdo = Mengao360_Bolao_DB::conectar();
 
         if (!$pdo) {
@@ -104,20 +104,20 @@ class Mengao360_Bolao_Ligas {
         }
 
         try {
-            $stmt = $pdo->prepare("
-                SELECT bc.bolao_competicao_id
-                FROM bolao_competicoes bc
-                INNER JOIN dim_competicoes dc
-                    ON dc.id = bc.competicao_id
-                WHERE dc.slug = ?
-                  AND bc.ind_ativo = 1
-                LIMIT 1
-            ");
+            if ((int) $bolao_competicao_id > 0) {
+                $context = Mengao360_Bolao_Context::resolve(
+                    $pdo,
+                    '',
+                    $competicao_slug,
+                    (int) $bolao_competicao_id
+                );
 
-            $stmt->execute([$competicao_slug]);
-            $row = $stmt->fetch();
+                return is_wp_error($context) ? null : (int) $context->bolao_competicao_id;
+            }
 
-            return $row ? (int) $row->bolao_competicao_id : null;
+            $context = Mengao360_Bolao_Context::resolve($pdo, '', $competicao_slug);
+
+            return is_wp_error($context) ? null : (int) $context->bolao_competicao_id;
 
         } catch (Exception $e) {
             error_log('Bolão Mengão 360 - erro ao buscar competição do bolão: ' . $e->getMessage());
@@ -128,7 +128,7 @@ class Mengao360_Bolao_Ligas {
     /**
      * Cria uma liga privada e adiciona o criador como DONO.
      */
-    public static function criar_liga($competicao_slug, $nome_liga, $usuario_bolao_id) {
+    public static function criar_liga($competicao_slug, $nome_liga, $usuario_bolao_id, $bolao_competicao_id = 0) {
         $pdo = Mengao360_Bolao_DB::conectar();
 
         if (!$pdo || empty($usuario_bolao_id) || empty($nome_liga)) {
@@ -139,7 +139,7 @@ class Mengao360_Bolao_Ligas {
         }
 
         try {
-            $bolao_competicao_id = self::get_bolao_competicao_id($competicao_slug);
+            $bolao_competicao_id = self::get_bolao_competicao_id($competicao_slug, $bolao_competicao_id);
 
             if (!$bolao_competicao_id) {
                 return [
@@ -147,6 +147,28 @@ class Mengao360_Bolao_Ligas {
                     'mensagem' => self::t('bolao_nao_encontrado')
                 ];
             }
+
+            $context = Mengao360_Bolao_Context::resolve(
+                $pdo,
+                '',
+                $competicao_slug,
+                $bolao_competicao_id
+            );
+            if (is_wp_error($context)
+                || strtoupper((string) $context->estado_operacional) !== 'ABERTO'
+                || !Mengao360_Bolao_Context::is_visible_to_current_user($context)) {
+                return [
+                    'sucesso' => false,
+                    'mensagem' => self::t('bolao_nao_encontrado')
+                ];
+            }
+
+            Mengao360_Bolao_Context::ensure_participant(
+                $pdo,
+                $bolao_competicao_id,
+                $usuario_bolao_id,
+                get_current_user_id()
+            );
 
             $stmt = $pdo->prepare("
                 SELECT tipo_liga_id
@@ -245,7 +267,7 @@ class Mengao360_Bolao_Ligas {
     /**
      * Lista ligas em que o usuário participa.
      */
-    public static function get_minhas_ligas($competicao_slug, $usuario_bolao_id) {
+    public static function get_minhas_ligas($competicao_slug, $usuario_bolao_id, $bolao_competicao_id = 0) {
         $pdo = Mengao360_Bolao_DB::conectar();
 
         if (!$pdo || empty($usuario_bolao_id)) {
@@ -273,12 +295,15 @@ class Mengao360_Bolao_Ligas {
                   AND blp.usuario_bolao_id = ?
                   AND blp.status = 'ATIVO'
                   AND bl.ind_ativo = 1
+                  AND (? = 0 OR bl.bolao_competicao_id = ?)
                 ORDER BY bl.dth_criacao DESC
             ");
 
             $stmt->execute([
                 $competicao_slug,
-                $usuario_bolao_id
+                $usuario_bolao_id,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             return $stmt->fetchAll();
@@ -292,7 +317,7 @@ class Mengao360_Bolao_Ligas {
     /**
      * Entra em uma liga privada usando código de convite.
      */
-    public static function entrar_liga_por_codigo($competicao_slug, $codigo_convite, $usuario_bolao_id) {
+    public static function entrar_liga_por_codigo($competicao_slug, $codigo_convite, $usuario_bolao_id, $bolao_competicao_id = 0) {
         $pdo = Mengao360_Bolao_DB::conectar();
 
         if (!$pdo || empty($usuario_bolao_id) || empty($codigo_convite)) {
@@ -304,6 +329,21 @@ class Mengao360_Bolao_Ligas {
 
         try {
             $codigo_convite = strtoupper(trim($codigo_convite));
+            $context = Mengao360_Bolao_Context::resolve(
+                $pdo,
+                '',
+                $competicao_slug,
+                (int) $bolao_competicao_id
+            );
+
+            if (is_wp_error($context)
+                || strtoupper((string) $context->estado_operacional) !== 'ABERTO'
+                || !Mengao360_Bolao_Context::is_visible_to_current_user($context)) {
+                return [
+                    'sucesso' => false,
+                    'mensagem' => self::t('bolao_nao_encontrado')
+                ];
+            }
 
             $stmt = $pdo->prepare("
                 SELECT
@@ -318,12 +358,15 @@ class Mengao360_Bolao_Ligas {
                   AND bl.codigo_convite = ?
                   AND bl.status = 'ATIVA'
                   AND bl.ind_ativo = 1
+                  AND (? = 0 OR bl.bolao_competicao_id = ?)
                 LIMIT 1
             ");
 
             $stmt->execute([
                 $competicao_slug,
-                $codigo_convite
+                $codigo_convite,
+                (int) $bolao_competicao_id,
+                (int) $bolao_competicao_id,
             ]);
 
             $liga = $stmt->fetch();
@@ -334,6 +377,13 @@ class Mengao360_Bolao_Ligas {
                     'mensagem' => self::t('liga_nao_encontrada')
                 ];
             }
+
+            Mengao360_Bolao_Context::ensure_participant(
+                $pdo,
+                (int) $bolao_competicao_id,
+                $usuario_bolao_id,
+                get_current_user_id()
+            );
 
             $stmt = $pdo->prepare("
                 INSERT INTO bolao_liga_participantes (

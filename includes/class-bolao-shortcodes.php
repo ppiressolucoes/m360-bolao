@@ -7,11 +7,50 @@ if (!defined('ABSPATH')) {
 class Mengao360_Bolao_Shortcodes {
 
     public static function init() {
+        register_nav_menu(
+            'm360-product-hub',
+            __('Mega Bolão 360 — Product Hub', 'mengao360-bolao')
+        );
         add_shortcode('bolao_mengao', [__CLASS__, 'render_bolao']);
+        add_shortcode('mega_bolao_360_home', ['Mengao360_Bolao_Product_Hub', 'render']);
+        foreach ([
+            'm360_hub_hero', 'm360_hub_menu', 'm360_hub_overview',
+            'm360_hub_competitions', 'm360_hub_benefits', 'm360_hub_plans',
+            'm360_hub_how', 'm360_hub_trust', 'm360_hub_faq', 'm360_hub_cta',
+        ] as $shortcode) {
+            add_shortcode($shortcode, [__CLASS__, 'render_hub_component']);
+        }
     }
 
+
+    public static function render_hub_component($atts, $content = null, $shortcode = '') {
+        $map = [
+            'm360_hub_hero' => 'hero',
+            'm360_hub_menu' => 'menu',
+            'm360_hub_overview' => 'overview',
+            'm360_hub_competitions' => 'competitions',
+            'm360_hub_benefits' => 'benefits',
+            'm360_hub_plans' => 'plans',
+            'm360_hub_how' => 'how',
+            'm360_hub_trust' => 'trust',
+            'm360_hub_faq' => 'faq',
+            'm360_hub_cta' => 'cta',
+        ];
+        if (!isset($map[$shortcode])) {
+            return '';
+        }
+        return Mengao360_Bolao_Product_Hub::render_component($map[$shortcode], $atts);
+    }
     public static function render_bolao($atts) {
+        // A agenda contém dados personalizados (palpites do usuário) e não pode
+        // ser servida como página pública compartilhada pelo cache do portal.
+        if (!defined('DONOTCACHEPAGE')) {
+            define('DONOTCACHEPAGE', true);
+        }
+        nocache_headers();
+
         $atts = shortcode_atts([
+            'bolao' => '',
             'competicao' => 'fifa-world-cup',
             'idioma' => '',
         ], $atts, 'bolao_mengao');
@@ -19,7 +58,16 @@ class Mengao360_Bolao_Shortcodes {
         // ============================================================
         // 1. Parâmetros principais do shortcode e usuário WordPress
         // ============================================================
-        $competicao_slug = sanitize_text_field($atts['competicao']);
+        $bolao_slug = sanitize_title($atts['bolao']);
+        $competicao_slug = sanitize_title($atts['competicao']);
+        $bolao_competicao_id = 0;
+        $minutos_bloqueio_palpite = 10;
+        $bolao_aberto = false;
+        $bolao_estado_operacional = 'RASCUNHO';
+        $bolao_visibilidade = 'PUBLICO';
+        $bolao_titulo_publico = '';
+        $bolao_descricao_publica = '';
+        $bolao_usar_conteudo_legado_wc = false;
         $usuario_logado = is_user_logged_in();
         $usuario_atual = wp_get_current_user();
 
@@ -47,6 +95,24 @@ class Mengao360_Bolao_Shortcodes {
         }
 
         $m360_bolao_lang = $idioma_bolao;
+        $context_messages = [
+            'pt-BR' => [
+                'unavailable' => 'O bolão está temporariamente indisponível.',
+                'not_found' => 'Bolão não encontrado ou inativo.',
+                'ambiguous' => 'Há mais de um bolão ativo para esta competição. Informe o atributo bolao no shortcode.',
+            ],
+            'en-US' => [
+                'unavailable' => 'The prediction pool is temporarily unavailable.',
+                'not_found' => 'Prediction pool not found or inactive.',
+                'ambiguous' => 'There is more than one active pool for this competition. Set the bolao shortcode attribute.',
+            ],
+            'es-ES' => [
+                'unavailable' => 'La quiniela no está disponible temporalmente.',
+                'not_found' => 'Quiniela no encontrada o inactiva.',
+                'ambiguous' => 'Hay más de una quiniela activa para esta competición. Define el atributo bolao del shortcode.',
+            ],
+        ];
+        $context_text = $context_messages[$m360_bolao_lang] ?? $context_messages['pt-BR'];
 
         // ============================================================
         // 2. Variáveis padrão utilizadas pelo template
@@ -80,11 +146,82 @@ class Mengao360_Bolao_Shortcodes {
         // 3. Carrega datas, navegação, jogos, palpites e ranking no DW
         // ============================================================
         if (class_exists('Mengao360_Bolao_DB')) {
+            $pdo = Mengao360_Bolao_DB::conectar();
+
+            if (!$pdo || !class_exists('Mengao360_Bolao_Context')) {
+                return '<div class="m360-bolao-aviso">' .
+                    esc_html($context_text['unavailable']) .
+                    '</div>';
+            }
+
+            try {
+                $contexto_bolao = Mengao360_Bolao_Context::resolve(
+                    $pdo,
+                    $bolao_slug,
+                    $competicao_slug
+                );
+            } catch (Throwable $e) {
+                error_log('Bolão Mengão 360 - erro ao resolver contexto: ' . $e->getMessage());
+                $contexto_bolao = new WP_Error(
+                    'm360_bolao_contexto_indisponivel',
+                    __('Não foi possível carregar este bolão.', 'mengao360-bolao')
+                );
+            }
+
+            if (is_wp_error($contexto_bolao)) {
+                $message_key = $contexto_bolao->get_error_code() === 'm360_bolao_contexto_ambiguo'
+                    ? 'ambiguous'
+                    : 'not_found';
+                return '<div class="m360-bolao-aviso">' .
+                    esc_html($context_text[$message_key]) .
+                    '</div>';
+            }
+
+            $bolao_competicao_id = (int) $contexto_bolao->bolao_competicao_id;
+            $bolao_slug = (string) $contexto_bolao->slug_bolao;
+            $competicao_slug = (string) $contexto_bolao->competicao_slug;
+            $minutos_bloqueio_palpite = (int) $contexto_bolao->janela_fechamento_minutos;
+            $bolao_estado_operacional = strtoupper((string) $contexto_bolao->estado_operacional);
+            $bolao_visibilidade = strtoupper((string) ($contexto_bolao->visibilidade ?? 'PUBLICO'));
+            $bolao_aberto = $bolao_estado_operacional === 'ABERTO';
+            $bolao_usar_conteudo_legado_wc = $bolao_slug === 'bolao-copa-do-mundo-fifa-2026';
+
+            if (($bolao_estado_operacional === 'RASCUNHO'
+                    || !Mengao360_Bolao_Context::is_visible_to_current_user($contexto_bolao))
+                && !current_user_can('manage_options')) {
+                return '<div class="m360-bolao-aviso">' .
+                    esc_html($context_text['not_found']) .
+                    '</div>';
+            }
+
+            $competition_label = trim((string) $contexto_bolao->competicao_nome);
+            $season_label = trim((string) $contexto_bolao->temporada);
+            if ($idioma_bolao === 'en-US' && !$bolao_usar_conteudo_legado_wc) {
+                $bolao_titulo_publico = trim($competition_label . ' Pool ' . $season_label);
+                $bolao_descricao_publica = sprintf(
+                    'Official Mengão 360 pool for %s %s.',
+                    $competition_label,
+                    $season_label
+                );
+            } elseif ($idioma_bolao === 'es-ES' && !$bolao_usar_conteudo_legado_wc) {
+                $bolao_titulo_publico = trim('Quiniela ' . $competition_label . ' ' . $season_label);
+                $bolao_descricao_publica = sprintf(
+                    'Quiniela oficial de Mengão 360 para %s %s.',
+                    $competition_label,
+                    $season_label
+                );
+            } else {
+                $bolao_titulo_publico = trim((string) $contexto_bolao->titulo);
+                $bolao_descricao_publica = trim((string) $contexto_bolao->descricao);
+            }
 
             // ------------------------------------------------------------
             // 3.1. Carrega todas as datas com jogos da competição
             // ------------------------------------------------------------
-            $datas_jogos = Mengao360_Bolao_DB::get_datas_jogos($competicao_slug);
+            $datas_jogos = Mengao360_Bolao_DB::get_datas_jogos(
+                $competicao_slug,
+                $bolao_competicao_id
+            );
 
             $data_selecionada = isset($_GET['data_jogo'])
                 ? sanitize_text_field($_GET['data_jogo'])
@@ -140,7 +277,8 @@ class Mengao360_Bolao_Shortcodes {
             if (!empty($data_selecionada)) {
                 $jogos = Mengao360_Bolao_DB::get_jogos_por_data(
                     $competicao_slug,
-                    $data_selecionada
+                    $data_selecionada,
+                    $bolao_competicao_id
                 );
             }
 
@@ -173,7 +311,8 @@ class Mengao360_Bolao_Shortcodes {
                 $palpites_usuario = Mengao360_Bolao_DB::get_palpites_usuario_por_data(
                     $competicao_slug,
                     $usuario_bolao_id,
-                    $data_selecionada
+                    $data_selecionada,
+                    $bolao_competicao_id
                 );
             }
 
@@ -191,7 +330,8 @@ class Mengao360_Bolao_Shortcodes {
             ) {
                 $resumo_usuario = Mengao360_Bolao_DB::get_resumo_usuario(
                     $competicao_slug,
-                    $usuario_bolao_id
+                    $usuario_bolao_id,
+                    $bolao_competicao_id
                 );
             }
 
@@ -211,7 +351,8 @@ class Mengao360_Bolao_Shortcodes {
                 $resumo_dashboard = Mengao360_Bolao_DB::get_resumo_dashboard_usuario(
                     $competicao_slug,
                     $usuario_bolao_id,
-                    $data_selecionada
+                    $data_selecionada,
+                    $bolao_competicao_id
                 );
             }
 
@@ -222,7 +363,8 @@ class Mengao360_Bolao_Shortcodes {
             if (method_exists('Mengao360_Bolao_DB', 'get_ranking_geral')) {
                 $ranking_geral = Mengao360_Bolao_DB::get_ranking_geral(
                     $competicao_slug,
-                    10
+                    10,
+                    $bolao_competicao_id
                 );
             }
 
@@ -240,7 +382,8 @@ class Mengao360_Bolao_Shortcodes {
             ) {
                 $minhas_ligas = Mengao360_Bolao_Ligas::get_minhas_ligas(
                     $competicao_slug,
-                    $usuario_bolao_id
+                    $usuario_bolao_id,
+                    $bolao_competicao_id
                 );
             }
         }

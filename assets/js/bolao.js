@@ -81,14 +81,6 @@
     function getLang() {
         const allowed = ['pt-BR', 'en-US', 'es-ES'];
 
-        if (window.m360Bolao && m360Bolao.lang && allowed.includes(m360Bolao.lang)) {
-            return m360Bolao.lang;
-        }
-
-        if (window.M360_BOLAO_I18N && M360_BOLAO_I18N.lang && allowed.includes(M360_BOLAO_I18N.lang)) {
-            return M360_BOLAO_I18N.lang;
-        }
-
         const wrapperLang = $('.m360-bolao').first().data('lang');
         if (wrapperLang && allowed.includes(wrapperLang)) {
             return wrapperLang;
@@ -99,6 +91,14 @@
             return urlLang;
         }
 
+        if (window.m360Bolao && m360Bolao.lang && allowed.includes(m360Bolao.lang)) {
+            return m360Bolao.lang;
+        }
+
+        if (window.M360_BOLAO_I18N && M360_BOLAO_I18N.lang && allowed.includes(M360_BOLAO_I18N.lang)) {
+            return M360_BOLAO_I18N.lang;
+        }
+
         return 'pt-BR';
     }
 
@@ -106,9 +106,14 @@
         const lang = getLang();
 
         let texto =
-            (window.M360_BOLAO_I18N && M360_BOLAO_I18N[chave]) ||
-            (window.m360Bolao && m360Bolao.i18n && m360Bolao.i18n[chave]) ||
             (M360_BOLAO_DICT[lang] && M360_BOLAO_DICT[lang][chave]) ||
+            (window.m360Bolao &&
+                m360Bolao.lang === lang &&
+                m360Bolao.i18n &&
+                m360Bolao.i18n[chave]) ||
+            (window.M360_BOLAO_I18N &&
+                M360_BOLAO_I18N.lang === lang &&
+                M360_BOLAO_I18N[chave]) ||
             (M360_BOLAO_DICT['pt-BR'] && M360_BOLAO_DICT['pt-BR'][chave]) ||
             chave;
 
@@ -123,6 +128,10 @@
 
     function getCompeticaoSlug() {
         return $('.m360-bolao').data('competicao') || '';
+    }
+
+    function getBolaoId() {
+        return parseInt($('.m360-bolao').first().data('bolao-id'), 10) || 0;
     }
 
     function setFeedback(elemento, mensagem, tipo) {
@@ -283,6 +292,7 @@
             action: 'm360_salvar_palpite',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             jogo_id: jogoId,
             competicao_slug: competicaoSlug,
             placar_mandante: placarMandante,
@@ -325,6 +335,7 @@
             action: 'm360_criar_liga',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             competicao_slug: competicaoSlug,
             nome_liga: nomeLiga
         }).done(function (response) {
@@ -381,6 +392,7 @@
             action: 'm360_entrar_liga',
             nonce: m360Bolao.nonce,
             idioma: getLang(),
+            bolao_id: getBolaoId(),
             competicao_slug: competicaoSlug,
             codigo_convite: codigoConvite
         }).done(function (response) {

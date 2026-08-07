@@ -224,8 +224,8 @@ if (!class_exists('Mengao360_Bolao_Admin')) {
             echo '<input type="hidden" name="data_jogo_filtro" value="' . esc_attr($data_jogo_filtro) . '">';
 
             echo '<div class="m360-admin-form-row">';
-            echo '<label>Placar mandante<br><input type="number" min="0" name="placar_mandante" value="' . esc_attr($placar_mandante !== null ? $placar_mandante : '') . '"></label>';
-            echo '<label>Placar visitante<br><input type="number" min="0" name="placar_visitante" value="' . esc_attr($placar_visitante !== null ? $placar_visitante : '') . '"></label>';
+            echo '<label>Placar mandante<br><input type="number" min="0" max="99" name="placar_mandante" value="' . esc_attr($placar_mandante !== null ? $placar_mandante : '') . '"></label>';
+            echo '<label>Placar visitante<br><input type="number" min="0" max="99" name="placar_visitante" value="' . esc_attr($placar_visitante !== null ? $placar_visitante : '') . '"></label>';
             echo '<label>Status<br><select name="status_resultado_id">';
             foreach ($status_resultados as $status) {
                 printf(
@@ -237,6 +237,8 @@ if (!class_exists('Mengao360_Bolao_Admin')) {
             }
             echo '</select></label>';
             echo '<label class="m360-admin-obs">Observação<br><input type="text" name="observacao" value="' . esc_attr($jogo['observacao'] ?: '') . '" placeholder="Resultado manual, conciliação, correção..."></label>';
+            echo '<label class="m360-admin-obs">Fonte oficial<br><input type="url" name="fonte_oficial" required placeholder="https://fonte-oficial.example/jogo"></label>';
+            echo '<label>Validade (horas)<br><input type="number" min="1" max="72" name="validade_horas" value="6" required></label>';
             echo '<button type="submit" class="button button-primary" onclick="return confirm(\'Confirma salvar este resultado manual? Se o status permitir apuração, o jogo poderá ser recalculado.\');">Salvar Resultado</button>';
             echo '</div>';
             echo '</form>';
@@ -811,9 +813,22 @@ if (!class_exists('Mengao360_Bolao_Admin')) {
             $placar_visitante = self::get_post('placar_visitante');
             $status_resultado_id = (int) self::get_post('status_resultado_id');
             $observacao = self::get_post('observacao', 'Resultado informado pelo painel operacional.');
+            $fonte_oficial = esc_url_raw(self::get_post('fonte_oficial'));
+            $validade_horas = min(72, max(1, (int) self::get_post('validade_horas', 6)));
 
-            if ($placar_mandante === '' || $placar_visitante === '') {
-                throw new Exception('Informe os dois placares.');
+            if (!preg_match('/^\d{1,2}$/', (string) $placar_mandante)
+                || !preg_match('/^\d{1,2}$/', (string) $placar_visitante)) {
+                throw new Exception('Informe placares válidos entre 0 e 99.');
+            }
+
+            if (!$fonte_oficial || mb_strlen($fonte_oficial) > 255
+                || mb_strlen($observacao) < 10 || mb_strlen($observacao) > 500) {
+                throw new Exception('Informe a fonte oficial e uma justificativa com pelo menos 10 caracteres.');
+            }
+
+            if (!class_exists('Mengao360_Bolao_Schema')
+                || !Mengao360_Bolao_Schema::table_exists($pdo, 'bolao_resultados_overrides')) {
+                throw new Exception('Migração C.1 pendente: overrides auditáveis ainda não estão disponíveis.');
             }
 
             $sql_status = "
@@ -834,7 +849,103 @@ if (!class_exists('Mengao360_Bolao_Admin')) {
             $fonte = 'ADMIN_MANUAL';
             $ind_recalcular = $permite_apuracao ? 1 : 0;
 
-            $sql = "
+            $stmt_jogo = $pdo->prepare(
+                'SELECT id, competicao_id, data_jogo, status_jogo, mandante_id, visitante_id,
+                        placar_mandante, placar_visitante, updated_at
+                 FROM fato_jogos
+                 WHERE id = ?
+                   AND competicao_id = (
+                       SELECT competicao_id
+                       FROM bolao_competicoes
+                       WHERE bolao_competicao_id = ?
+                       LIMIT 1
+                   )
+                 LIMIT 1'
+            );
+            $stmt_jogo->execute([$jogo_id, $competicao_id]);
+            $estado_dw = $stmt_jogo->fetch(PDO::FETCH_ASSOC);
+
+            if (!$estado_dw) {
+                throw new Exception('Jogo não encontrado no DW para este bolão.');
+            }
+
+            $hash_estado_dw = hash(
+                'sha256',
+                wp_json_encode($estado_dw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            );
+
+            $pdo->beginTransaction();
+
+            try {
+                $stmt_override = $pdo->prepare(
+                    "UPDATE bolao_resultados_overrides
+                     SET status = 'SUBSTITUIDO',
+                         revogado_por_wp_user_id = ?,
+                         dth_revogacao = NOW()
+                     WHERE bolao_competicao_id = ?
+                       AND jogo_id = ?
+                       AND status = 'ATIVO'"
+                );
+                $stmt_override->execute([get_current_user_id(), $competicao_id, $jogo_id]);
+
+                $stmt_override = $pdo->prepare(
+                    "INSERT INTO bolao_resultados_overrides (
+                        bolao_competicao_id,
+                        jogo_id,
+                        status,
+                        placar_mandante,
+                        placar_visitante,
+                        fonte_oficial,
+                        justificativa,
+                        hash_estado_dw,
+                        criado_por_wp_user_id,
+                        dth_expiracao
+                    ) VALUES (?, ?, 'ATIVO', ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR))"
+                );
+                $stmt_override->execute([
+                    $competicao_id,
+                    $jogo_id,
+                    (int) $placar_mandante,
+                    (int) $placar_visitante,
+                    $fonte_oficial,
+                    $observacao,
+                    $hash_estado_dw,
+                    get_current_user_id(),
+                    $validade_horas,
+                ]);
+                $override_id = (int) $pdo->lastInsertId();
+
+                $stmt_audit = $pdo->prepare(
+                    'INSERT INTO bolao_auditoria (
+                        request_id,
+                        evento,
+                        entidade,
+                        entidade_id,
+                        bolao_competicao_id,
+                        wp_user_id,
+                        estado_anterior,
+                        estado_novo,
+                        contexto
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+                $stmt_audit->execute([
+                    wp_generate_uuid4(),
+                    'RESULTADO_OVERRIDE_CRIADO',
+                    'bolao_resultados_overrides',
+                    (string) $override_id,
+                    $competicao_id,
+                    get_current_user_id(),
+                    wp_json_encode($estado_dw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    wp_json_encode([
+                        'placar_mandante' => (int) $placar_mandante,
+                        'placar_visitante' => (int) $placar_visitante,
+                        'fonte_oficial' => $fonte_oficial,
+                        'validade_horas' => $validade_horas,
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    wp_json_encode(['jogo_id' => $jogo_id], JSON_UNESCAPED_UNICODE),
+                ]);
+
+                $sql = "
                 INSERT INTO bolao_resultados_partidas (
                     bolao_competicao_id,
                     jogo_id,
@@ -865,32 +976,26 @@ if (!class_exists('Mengao360_Bolao_Admin')) {
                     dth_resultado_confirmado = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR),
                     observacao = VALUES(observacao),
                     ind_recalcular = VALUES(ind_recalcular)
-            ";
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                $competicao_id,
-                $jogo_id,
-                $status_resultado_id,
-                $fonte,
-                (int) $placar_mandante,
-                (int) $placar_visitante,
-                $observacao,
-                $ind_recalcular,
-            ]);
-
-            if ($permite_apuracao) {
-                $sql_fato = "
-                    UPDATE fato_jogos
-                    SET
-                        status_jogo = 'FINISHED',
-                        placar_mandante = ?,
-                        placar_visitante = ?,
-                        updated_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)
-                    WHERE id = ?
                 ";
-                $stmt_fato = $pdo->prepare($sql_fato);
-                $stmt_fato->execute([(int) $placar_mandante, (int) $placar_visitante, $jogo_id]);
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    $competicao_id,
+                    $jogo_id,
+                    $status_resultado_id,
+                    $fonte,
+                    (int) $placar_mandante,
+                    (int) $placar_visitante,
+                    $observacao . ' | Fonte: ' . $fonte_oficial,
+                    $ind_recalcular,
+                ]);
+
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $e;
             }
         }
 
